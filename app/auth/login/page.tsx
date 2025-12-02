@@ -39,7 +39,7 @@ export default function LoginPage() {
     }
 
     console.log("Login OK:", data)
-    router.push("/")
+    router.replace("/dashboard")
   }
 
   return (

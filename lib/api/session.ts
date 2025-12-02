@@ -3,13 +3,11 @@ import { CreateSessionDto } from "@/lib/types"
 import { mapDbSession } from "@/lib/mappers/session"
 
 export const sessionsApi = {
-  async getAll() {
-    const user = (await supabase.auth.getUser()).data.user
-
+  async getAll(userId: string) {
     const { data, error } = await supabase
       .from("sessions")
       .select("*")
-      .eq("user_id", user!.id)
+      .eq("user_id", userId)
       .order("created_at", { ascending: false })
 
     if (error) throw error
@@ -34,9 +32,7 @@ export const sessionsApi = {
     return mapDbSession(data)
   },
 
-  async create(dto: CreateSessionDto) {
-    const user = (await supabase.auth.getUser()).data.user
-
+  async create(dto: CreateSessionDto, userId: string) {
     const { data: session, error } = await supabase
       .from("sessions")
       .insert({
@@ -44,7 +40,7 @@ export const sessionsApi = {
         routine_name: dto.routineName,
         started_at: dto.startedAt.toISOString(),
         finished_at: dto.finishedAt.toISOString(),
-        user_id: user!.id,
+        user_id: userId,
       })
       .select()
       .single()

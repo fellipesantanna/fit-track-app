@@ -1,14 +1,13 @@
-import { supabase } from "@lib/supabase"
-import { SaveExerciseDto } from "@lib/types"
-import { mapDbExercise } from "@lib/mappers/exercise"
+import { supabase } from "@/lib/supabase"
+import { SaveExerciseDto } from "@/lib/types"
+import { mapDbExercise } from "@/lib/mappers/exercise"
 
 export const exercisesApi = {
-  async getAll() {
-    const user = (await supabase.auth.getUser()).data.user
+  async getAll(userId: string) {
     const { data, error } = await supabase
       .from("exercises")
       .select("*")
-      .eq("user_id", user!.id)
+      .eq("user_id", userId)
       .order("created_at")
 
     if (error) throw error
@@ -26,16 +25,14 @@ export const exercisesApi = {
     return mapDbExercise(data)
   },
 
-  async create(dto: SaveExerciseDto) {
-    const user = (await supabase.auth.getUser()).data.user
-
+  async create(dto: SaveExerciseDto, userId: string) {
     const { data, error } = await supabase
       .from("exercises")
       .insert({
         name: dto.name,
         category: dto.category,
         photo_url: dto.photoUrl ?? null,
-        user_id: user!.id
+        user_id: userId
       })
       .select()
       .single()

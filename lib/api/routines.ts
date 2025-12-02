@@ -1,15 +1,13 @@
 import { supabase } from "@/lib/supabase"
-import { CreateRoutineDto } from "@lib/types"
-import { mapDbRoutine } from "@lib/mappers/routine"
+import { CreateRoutineDto } from "@/lib/types"
+import { mapDbRoutine } from "@/lib/mappers/routine"
 
 export const routinesApi = {
-  async getAll() {
-    const user = (await supabase.auth.getUser()).data.user
-
+  async getAll(userId: string) {
     const { data, error } = await supabase
       .from("routines")
       .select("*, routine_exercises(*)")
-      .eq("user_id", user!.id)
+      .eq("user_id", userId)
       .order("created_at")
 
     if (error) throw error
@@ -27,14 +25,12 @@ export const routinesApi = {
     return mapDbRoutine(data)
   },
 
-  async create(dto: CreateRoutineDto) {
-    const user = (await supabase.auth.getUser()).data.user
-
+  async create(dto: CreateRoutineDto, userId: string) {
     const { data: routine, error } = await supabase
       .from("routines")
       .insert({
         name: dto.name,
-        user_id: user!.id
+        user_id: userId
       })
       .select()
       .single()

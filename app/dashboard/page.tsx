@@ -1,53 +1,76 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { supabase } from "@/lib/supabase"
-import { sessionsApi } from "@/lib/api/session"
-import { routinesApi } from "@/lib/api/routines"
-import { Session } from "@/lib/types"
-import { Button } from "@/components/ui/button"
-import { Plus, Clock, BarChart3, Dumbbell } from "lucide-react"
-import { motion } from "framer-motion"
-import { useRouter } from "next/navigation"
-import { SkeletonCard } from "@/components/common/SkeletonCard"
-import { PageHeader } from "@/components/common/PageHeader"
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { sessionsApi } from "@/lib/api/session";
+import { routinesApi } from "@/lib/api/routines";
+import { Session } from "@/lib/types";
+import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
-  const router = useRouter()
+  const router = useRouter();
 
-  const [loading, setLoading] = useState(true)
-  const [sessions, setSessions] = useState<Session[]>([])
-  const [routinesCount, setRoutinesCount] = useState(0)
+  const [loading, setLoading] = useState(true);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [routinesCount, setRoutinesCount] = useState(0);
 
-  // 🔥 PROTEÇÃO ANTI-CRASH: garante que o usuário esteja logado
+  // 🚀 Sessão limpa e sem loops
   useEffect(() => {
-    async function checkSession() {
-      const { data } = await supabase.auth.getSession()
+    let mounted = true;
 
-      if (!data.session) {
-        router.push("/auth/login")
-        return
-      }
-
-      // só carrega o dashboard depois da sessão estar garantida
-      loadDashboard()
-    }
-
-    async function loadDashboard() {
+    async function loadDashboard(userId: string) {
       try {
-        setLoading(true)
+        setLoading(true);
 
         const [sessionsRes, routinesRes] = await Promise.all([
-          sessionsApi.getAll(),
-          routinesApi.getAll()
-        ])
+          sessionsApi.getAll(userId),
+          routinesApi.getAll(userId),
+        ]);
 
-        setSessions(sessionsRes)
-        setRoutinesCount(routinesRes.length)
+        if (!mounted) return;
+
+        setSessions(sessionsRes);
+        setRoutinesCount(routinesRes.length);
+      } catch (err) {
+        console.error("Erro no dashboard:", err);
       } finally {
-        setLoading(false)
+        if (mounted) setLoading(false);
       }
     }
 
-    checkSession()
-  }, [])
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        if (!mounted) return;
+
+        // 🚫 Se não tem sessão → login (sem loop)
+        if (!session) {
+          router.replace("/auth/login");
+          return;
+        }
+
+        // ✔ Sessão pronta → carrega dados
+        await loadDashboard(session.user.id);
+      }
+    );
+
+    return () => {
+      mounted = false;
+      listener.subscription.unsubscribe();
+    };
+  }, [router]);
+
+  return (
+    <div style={{ padding: 20 }}>
+      <h1>Dashboard</h1>
+
+      {loading ? (
+        <p>Carregando…</p>
+      ) : (
+        <div>
+          <p>Total de rotinas: {routinesCount}</p>
+          <p>Total de sessões: {sessions.length}</p>
+        </div>
+      )}
+    </div>
+  );
+}
