@@ -1,8 +1,8 @@
 import { storage } from "./storage"
 
 export function exportSessionsToCSV(): string {
-  const sessions = await sessionsApi.getAll()
-  const exercises = await exercisesApi.getAll()
+  const sessions = storage.getSessions()
+  const exercises = storage.getExercises()
 
   // Criar mapa de exercícios para lookup rápido
   const exerciseMap = new Map(exercises.map((e) => [e.id, e]))

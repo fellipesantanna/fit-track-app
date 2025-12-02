@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { exercisesApi } from "@/lib/exercises"
 import { routinesApi } from "@/lib/routines"
 import type { Exercise } from "@/lib/types"
-import { ExerciseSelector } from "@/components/exercise-selector-broken"
+import { ExerciseSelector } from "@/components/exercise-selector"
 
 interface CreateRoutineDialogProps {
   open: boolean

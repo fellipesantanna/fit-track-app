@@ -1,391 +1,199 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeftIcon, PlusIcon, GripVerticalIcon, XIcon } from "@/components/icons"
+import { useEffect, useState } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
+import { SessionExerciseCard } from "@/components/session/SessionExerciseCard"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { StopwatchInput } from "@/components/stopwatch-input"
-import { Textarea } from "@/components/ui/textarea"
+import { Loader2, Save, ArrowLeft } from "lucide-react"
+import { sessionsApi } from "@/lib/api/sessions"
+import { routinesApi } from "@/lib/api/routines"
+import { Exercise, Routine, SessionExercise, WorkoutSet } from "@/lib/types"
+import { Separator } from "@/components/ui/separator"
+import { motion } from "framer-motion"
+import { exercisesApi } from "@/lib/api/exercises"
 
-import { exercisesApi } from "@/lib/exercises"
-import { routinesApi } from "@/lib/routines"
-import { sessionsApi } from "@/lib/sessions"
-import type { Exercise } from "@/lib/types"
-
-import { ExerciseSelector } from "@/components/exercise-selector-broken"
-import { useToast } from "@/hooks/use-toast"
-
-export default function SessionPage() {
-  const router = useRouter()
+export default function SessaoPage() {
   const searchParams = useSearchParams()
+  const routineId = searchParams.get("id")
+  const router = useRouter()
 
-  const routineId = searchParams.get("routineId")
-
-  const { toast } = useToast()
-
-  const [allExercises, setAllExercises] = useState<Exercise[]>([])
-
-  /**
-   * Estrutura interna da página
-   */
-  interface SetEntry {
-    setIndex: number
-    weightKg?: number
-    reps?: number
-    durationSec?: number
-    distanceM?: number
-  }
-
-  interface SessionExerciseEntry {
-    exerciseId: string
-    exercise: Exercise
-    position: number
-    notes?: string
-    advancedTechnique?: string
-    isDone?: boolean
-    sets: SetEntry[]
-  }
-
-  const [sessionExercises, setSessionExercises] = useState<SessionExerciseEntry[]>([])
   const [loading, setLoading] = useState(true)
-  const [showSelector, setShowSelector] = useState(false)
+  const [saving, setSaving] = useState(false)
 
-  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [routine, setRoutine] = useState<Routine | null>(null)
+  const [exercises, setExercises] = useState<Exercise[]>([])
+  const [sessionExercises, setSessionExercises] = useState<SessionExercise[]>([])
 
-  // -------------------------------------------------------------
-  // CARREGAR ROTINA (SE HOUVER) + EXERCÍCIOS
-  // -------------------------------------------------------------
+  const [sessionStartTimestamp] = useState(Date.now())
+
+  /** ============================
+   *  Carregar dados
+   ============================ */
   useEffect(() => {
-    async function loadSession() {
-      setLoading(true)
-
-      const exercises = await exercisesApi.getAll()
-      setAllExercises(exercises)
-
-      // MODO: Treino baseado em rotina
-      if (routineId) {
-        const routine = await routinesApi.getById(routineId)
-        if (!routine) {
-          toast({
-            title: "Rotina não encontrada",
-            variant: "destructive",
-          })
-          router.push("/")
-          return
-        }
-
-        const mapped = routine.routine_exercises
-          ?.sort((a, b) => a.position - b.position)
-          .map((re) => {
-            const ex = exercises.find((e) => e.id === re.exercise_id)!
-            const sets = []
-
-            // Sets sugeridos (se existir suggested_sets)
-            if (re.suggested_sets) {
-              for (let i = 0; i < re.suggested_sets; i++) {
-                sets.push({
-                  setIndex: i,
-                  reps: re.suggested_reps ?? undefined,
-                })
-              }
-            }
-
-            return {
-              exerciseId: ex.id,
-              exercise: ex,
-              position: re.position,
-              notes: "",
-              advancedTechnique: re.advanced_technique ?? undefined,
-              sets,
-            } as SessionExerciseEntry
-          })
-
-        setSessionExercises(mapped ?? [])
-      }
-
-      setLoading(false)
-    }
-
-    loadSession()
-  }, [routineId, router, toast])
-
-  // -------------------------------------------------------------
-  // ADICIONAR EXERCÍCIO MANUALMENTE
-  // -------------------------------------------------------------
-  const handleAddExercise = (exercise: Exercise) => {
-    setSessionExercises((prev) => [
-      ...prev,
-      {
-        exerciseId: exercise.id,
-        exercise,
-        position: prev.length,
-        sets: [],
-        notes: "",
-      },
-    ])
-    setShowSelector(false)
-  }
-
-  // -------------------------------------------------------------
-  // REMOVER
-  // -------------------------------------------------------------
-  const removeExercise = (index: number) => {
-    setSessionExercises((prev) => prev.filter((_, i) => i !== index).map((ex, i) => ({ ...ex, position: i })))
-  }
-
-  // -------------------------------------------------------------
-  // ADD SET
-  // -------------------------------------------------------------
-  const addSet = (exerciseIndex: number) => {
-    setSessionExercises((prev) =>
-      prev.map((ex, i) =>
-        i === exerciseIndex
-          ? {
-              ...ex,
-              sets: [
-                ...ex.sets,
-                {
-                  setIndex: ex.sets.length,
-                },
-              ],
-            }
-          : ex,
-      ),
-    )
-  }
-
-  // -------------------------------------------------------------
-  // REMOVE SET
-  // -------------------------------------------------------------
-  const removeSet = (exerciseIndex: number, setIndex: number) => {
-    setSessionExercises((prev) =>
-      prev.map((ex, i) =>
-        i === exerciseIndex
-          ? {
-              ...ex,
-              sets: ex.sets.filter((_, s) => s !== setIndex).map((s, newIndex) => ({ ...s, setIndex: newIndex })),
-            }
-          : ex,
-      ),
-    )
-  }
-
-  // -------------------------------------------------------------
-  // UPDATE SET VALUES
-  // -------------------------------------------------------------
-  const updateSet = (exerciseIndex: number, setIndex: number, updates: Partial<SetEntry>) => {
-    setSessionExercises((prev) =>
-      prev.map((ex, i) =>
-        i === exerciseIndex
-          ? {
-              ...ex,
-              sets: ex.sets.map((s, si) => (si === setIndex ? { ...s, ...updates } : s)),
-            }
-          : ex,
-      ),
-    )
-  }
-
-  // -------------------------------------------------------------
-  // DRAG & DROP EXERCÍCIOS
-  // -------------------------------------------------------------
-  const handleDragStart = (index: number) => setDragIndex(index)
-
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault()
-    if (dragIndex === null || dragIndex === index) return
-
-    setSessionExercises((prev) => {
-      const list = [...prev]
-      const dragged = list[dragIndex]
-      list.splice(dragIndex, 1)
-      list.splice(index, 0, dragged)
-      return list.map((item, i) => ({ ...item, position: i }))
-    })
-
-    setDragIndex(index)
-  }
-
-  const handleDragEnd = () => setDragIndex(null)
-
-  // -------------------------------------------------------------
-  // SALVAR TREINO NO SUPABASE
-  // -------------------------------------------------------------
-  const saveSession = async () => {
-    if (sessionExercises.length === 0) {
-      toast({
-        title: "Adicione exercícios ao treino",
-        variant: "destructive",
-      })
+    if (!routineId) {
+      router.push("/rotinas")
       return
     }
 
-    const payload = {
-      exercises: sessionExercises,
-      finishedAt: new Date().toISOString(),
+    async function load() {
+      setLoading(true)
+      try {
+        const [routineData, allExercises] = await Promise.all([
+          routinesApi.getById(routineId),
+          exercisesApi.getAll()
+        ])
+
+        setRoutine(routineData)
+        setExercises(allExercises)
+
+        // Montar state da sessão baseado na rotina
+        const prepared: SessionExercise[] = routineData.exercises.map((re, idx) => {
+          const ex = allExercises.find(e => e.id === re.exerciseId)
+
+          return {
+            id: crypto.randomUUID(),
+            exerciseId: re.exerciseId,
+            exerciseName: ex?.name ?? "Exercício",
+            category: ex?.category ?? "weight-reps",
+            photoUrl: ex?.photoUrl ?? null,
+            position: idx,
+            sets: []
+          }
+        })
+
+        setSessionExercises(prepared)
+
+      } finally {
+        setLoading(false)
+      }
     }
 
-    await sessionsApi.create({
-      routineId: routineId ?? undefined,
-      routineName: undefined,
-      date: new Date().toISOString(),
-      exercises: sessionExercises,
-    } as any)
+    load()
+  }, [routineId])
 
-    toast({
-      title: "Treino salvo!",
-      description: "Sua sessão foi registrada com sucesso.",
-    })
 
-    router.push("/historico")
+  /** ============================
+   *  Atualizar sets de um exercício
+   ============================ */
+  function updateExerciseSets(exId: string, sets: WorkoutSet[]) {
+    setSessionExercises(prev =>
+      prev.map(se => se.id === exId ? { ...se, sets } : se)
+    )
   }
 
-  // -------------------------------------------------------------
-  // RENDER
-  // -------------------------------------------------------------
+
+  /** ============================
+   *  Salvar sessão no banco
+   ============================ */
+  async function saveSession() {
+    setSaving(true)
+
+    try {
+      await sessionsApi.create({
+        routineId: routineId!,
+        routineName: routine?.name ?? "Treino",
+        startedAt: new Date(sessionStartTimestamp),
+        finishedAt: new Date(),
+        exercises: sessionExercises.map(se => ({
+          exerciseId: se.exerciseId,
+          position: se.position,
+          sets: se.sets
+        }))
+      })
+
+      router.push("/historico")
+    } catch (err) {
+      console.error(err)
+      alert("Erro ao salvar sessão.")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+
+  /** ============================
+   *  UI
+   ============================ */
+
   if (loading) {
-    return <main className="p-6 text-muted-foreground">Carregando treino...</main>
+    return (
+      <div className="flex items-center justify-center min-h-[70vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+      </div>
+    )
   }
+
+  if (!routine) return <div>Rotina não encontrada.</div>
 
   return (
-    <main className="max-w-lg mx-auto pb-24">
-      <div className="sticky top-0 bg-background z-10 p-4 border-b flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeftIcon className="w-5 h-5" />
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25 }}
+      className="max-w-3xl mx-auto p-6 flex flex-col gap-6"
+    >
+
+      {/* HEADER */}
+      <div className="flex items-center gap-3">
+        <Button
+          variant="ghost"
+          onClick={() => router.back()}
+          className="flex items-center gap-2"
+        >
+          <ArrowLeft className="w-4 h-4" />
         </Button>
-        <h1 className="text-xl font-bold">Treino</h1>
-        <Button className="ml-auto" onClick={saveSession}>
-          Finalizar
-        </Button>
+
+        <div className="flex flex-col">
+          <h1 className="text-2xl font-bold">{routine.name}</h1>
+          <p className="text-muted-foreground text-sm">
+            Cartões grandes • Editor premium
+          </p>
+        </div>
       </div>
 
-      <div className="p-4 space-y-4">
-        {sessionExercises.length === 0 && (
-          <Card className="p-6 text-center text-muted-foreground">Nenhum exercício adicionado</Card>
-        )}
+      <Separator />
 
-        {sessionExercises.map((ex, exerciseIndex) => (
-          <Card
-            key={exerciseIndex}
-            className="p-4 space-y-4"
-            draggable
-            onDragStart={() => handleDragStart(exerciseIndex)}
-            onDragOver={(e) => handleDragOver(e, exerciseIndex)}
-            onDragEnd={handleDragEnd}
+      {/* EXERCÍCIOS DA SESSÃO */}
+      <div className="flex flex-col gap-6">
+        {sessionExercises.map((ex) => (
+          <motion.div
+            key={ex.id}
+            layout
+            transition={{ type: "spring", bounce: 0.25 }}
           >
-            {/* HEADER */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <GripVerticalIcon className="w-5 h-5 text-muted-foreground" />
-                <h3 className="font-semibold">{ex.exercise.name}</h3>
-              </div>
-
-              <Button variant="ghost" size="icon" onClick={() => removeExercise(exerciseIndex)}>
-                <XIcon className="w-4 h-4" />
-              </Button>
-            </div>
-
-            {/* SETS */}
-            <div className="space-y-3">
-              {ex.sets.map((set, setIndex) => (
-                <div key={setIndex} className="p-3 bg-muted rounded-lg space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label>Peso (kg)</Label>
-                      <Input
-                        type="number"
-                        value={set.weightKg ?? ""}
-                        onChange={(e) =>
-                          updateSet(exerciseIndex, setIndex, {
-                            weightKg: e.target.value ? Number(e.target.value) : undefined,
-                          })
-                        }
-                      />
-                    </div>
-
-                    <div>
-                      <Label>Reps</Label>
-                      <Input
-                        type="number"
-                        value={set.reps ?? ""}
-                        onChange={(e) =>
-                          updateSet(exerciseIndex, setIndex, {
-                            reps: e.target.value ? Number(e.target.value) : undefined,
-                          })
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label>Duração (seg)</Label>
-                      <StopwatchInput
-                        value={set.durationSec ?? 0}
-                        onChange={(val) => updateSet(exerciseIndex, setIndex, { durationSec: val })}
-                      />
-                    </div>
-
-                    <div>
-                      <Label>Distância (m)</Label>
-                      <Input
-                        type="number"
-                        value={set.distanceM ?? ""}
-                        onChange={(e) =>
-                          updateSet(exerciseIndex, setIndex, {
-                            distanceM: e.target.value ? Number(e.target.value) : undefined,
-                          })
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="w-full"
-                    onClick={() => removeSet(exerciseIndex, setIndex)}
-                  >
-                    Remover série
-                  </Button>
-                </div>
-              ))}
-
-              <Button variant="outline" className="w-full gap-2 bg-transparent" onClick={() => addSet(exerciseIndex)}>
-                <PlusIcon className="w-4 h-4" />
-                Adicionar série
-              </Button>
-            </div>
-
-            {/* NOTAS */}
-            <div className="space-y-2">
-              <Label>Anotações</Label>
-              <Textarea
-                rows={2}
-                value={ex.notes ?? ""}
-                onChange={(e) =>
-                  setSessionExercises((prev) =>
-                    prev.map((item, i) => (i === exerciseIndex ? { ...item, notes: e.target.value } : item)),
-                  )
-                }
-              />
-            </div>
-          </Card>
+            <SessionExerciseCard
+              exercise={{
+                id: ex.exerciseId,
+                name: ex.exerciseName,
+                category: ex.category,
+                photoUrl: ex.photoUrl!,
+                userId: "",
+                createdAt: new Date(),
+              }}
+              type={ex.category}
+              sets={ex.sets}
+              onChange={(sets) => updateExerciseSets(ex.id, sets)}
+            />
+          </motion.div>
         ))}
-
-        <Button variant="outline" className="w-full gap-2 bg-transparent" onClick={() => setShowSelector(true)}>
-          <PlusIcon className="w-4 h-4" />
-          Adicionar exercício
-        </Button>
       </div>
 
-      {/* SELECTOR */}
-      <ExerciseSelector open={showSelector} onOpenChange={setShowSelector} onSelect={handleAddExercise} />
-    </main>
+      <Separator />
+
+      {/* BOTÃO SALVAR */}
+      <Button
+        onClick={saveSession}
+        disabled={saving}
+        className="flex items-center gap-2 justify-center text-lg py-6 bg-purple-600 hover:bg-purple-700"
+      >
+        {saving ? (
+          <Loader2 className="w-5 h-5 animate-spin" />
+        ) : (
+          <Save className="w-5 h-5" />
+        )}
+        Finalizar Sessão
+      </Button>
+
+    </motion.div>
   )
 }

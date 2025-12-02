@@ -4,6 +4,7 @@ import type React from "react"
 
 import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
+import { auth } from "@/lib/auth"
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()

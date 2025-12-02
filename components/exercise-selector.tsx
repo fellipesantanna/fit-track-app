@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { SearchIcon, PlusIcon, DumbbellIcon, MoreVerticalIcon, EditIcon, TrashIcon } from "@/components/icons"
+import { storage } from "@/lib/storage"
 import type { Exercise, ExerciseCategory } from "@/lib/types"
 import { categoryLabels } from "@/lib/utils/category"
 import { CreateExerciseDialog } from "./create-exercise-dialog"
@@ -21,8 +22,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
-import { exercisesApi } from "@/lib/exercises"
-import { routinesApi } from "@/lib/routines"
 
 interface ExerciseSelectorProps {
   open: boolean
@@ -40,38 +39,25 @@ export function ExerciseSelector({ open, onOpenChange, onSelect }: ExerciseSelec
   const [deleteExerciseId, setDeleteExerciseId] = useState<string | null>(null)
   const { toast } = useToast()
 
-  // 🔥 CARREGAR EXERCÍCIOS DO SUPABASE
   useEffect(() => {
     if (open) {
-      loadExercises()
+      setExercises(storage.getExercises())
     }
   }, [open])
 
-  async function loadExercises() {
-    try {
-      const ex = await exercisesApi.getAll()
-      setExercises(ex)
-    } catch (e) {
-      console.error(e)
-    }
-  }
-
-  // 🔥 NOVO EXERCÍCIO CRIADO
-  const handleExerciseCreated = async (exercise: Exercise) => {
-    await loadExercises()
+  const handleExerciseCreated = (exercise: Exercise) => {
+    setExercises(storage.getExercises())
     setShowCreateDialog(false)
     onSelect(exercise)
   }
 
-  // 🔥 EDITAR EXERCÍCIO
   const handleEditExercise = (exercise: Exercise) => {
     setEditingExercise(exercise)
     setShowEditDialog(true)
   }
 
-  // 🔥 APÓS SALVAR EDIÇÃO
-  const handleExerciseUpdated = async () => {
-    await loadExercises()
+  const handleExerciseUpdated = () => {
+    setExercises(storage.getExercises())
     setEditingExercise(null)
     toast({
       title: "Exercício atualizado",
@@ -79,31 +65,25 @@ export function ExerciseSelector({ open, onOpenChange, onSelect }: ExerciseSelec
     })
   }
 
-  // 🔥 APAGAR EXERCÍCIO
-  const handleDeleteExercise = async (id: string) => {
-    try {
-      await exercisesApi.softDelete(id)
+  const handleDeleteExercise = (id: string) => {
+    storage.deleteExercise(id)
 
-      // Remover também de rotinas vinculadas
-      const routines = await routinesApi.getAll()
-      for (const routine of routines) {
-        // Cada rotina agora vem com routine_exercises
-        const hasExercise = routine.routine_exercises?.some(re => re.exercise_id === id)
-        if (hasExercise) {
-          await routinesApi.removeExerciseFromRoutine(routine.id, id)
-        }
+    // Remove from all routines
+    const routines = storage.getRoutines()
+    routines.forEach((routine) => {
+      if (routine.exerciseIds.includes(id)) {
+        storage.updateRoutine(routine.id, {
+          exerciseIds: routine.exerciseIds.filter((eid) => eid !== id),
+        })
       }
+    })
 
-      await loadExercises()
-      toast({
-        title: "Exercício excluído",
-        description: "O exercício foi removido do catálogo",
-      })
-    } catch (e) {
-      console.error(e)
-    }
-
+    setExercises(storage.getExercises())
     setDeleteExerciseId(null)
+    toast({
+      title: "Exercício excluído",
+      description: "O exercício foi removido do catálogo e das rotinas",
+    })
   }
 
   const filteredExercises = exercises.filter((exercise) => {
@@ -112,7 +92,7 @@ export function ExerciseSelector({ open, onOpenChange, onSelect }: ExerciseSelec
     return matchesSearch && matchesCategory
   })
 
-  const categories = [
+  const categories: Array<{ value: ExerciseCategory | "all"; label: string }> = [
     { value: "all", label: "Todos" },
     { value: "weight-reps", label: "Peso & Reps" },
     { value: "bodyweight-reps", label: "Peso Corporal" },
@@ -146,6 +126,7 @@ export function ExerciseSelector({ open, onOpenChange, onSelect }: ExerciseSelec
                   variant={selectedCategory === cat.value ? "default" : "outline"}
                   size="sm"
                   onClick={() => setSelectedCategory(cat.value)}
+                  className="whitespace-nowrap flex-shrink-0"
                 >
                   {cat.label}
                 </Button>
@@ -170,34 +151,40 @@ export function ExerciseSelector({ open, onOpenChange, onSelect }: ExerciseSelec
                       onClick={() => onSelect(exercise)}
                       className="flex items-center gap-3 flex-1 text-left min-w-0"
                     >
-                      <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
-                        <DumbbellIcon className="w-6 h-6 text-muted-foreground" />
+                      <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                        {exercise.photoUrl ? (
+                          <img
+                            src={exercise.photoUrl || "/placeholder.svg"}
+                            alt={exercise.name}
+                            className="w-full h-full object-cover rounded-lg"
+                          />
+                        ) : (
+                          <DumbbellIcon className="w-6 h-6 text-muted-foreground" />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{exercise.name}</p>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {categoryLabels[exercise.category]}
-                        </p>
+                        <p className="text-sm text-muted-foreground truncate">{categoryLabels[exercise.category]}</p>
                       </div>
                     </button>
 
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
                           <MoreVerticalIcon className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleEditExercise(exercise)}>
                           <EditIcon className="w-4 h-4 mr-2" />
-                          Editar
+                          Editar exercício
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => setDeleteExerciseId(exercise.id)}
-                          className="text-destructive"
+                          className="text-destructive focus:text-destructive"
                         >
                           <TrashIcon className="w-4 h-4 mr-2" />
-                          Apagar
+                          Apagar exercício
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -232,7 +219,7 @@ export function ExerciseSelector({ open, onOpenChange, onSelect }: ExerciseSelec
           <AlertDialogHeader>
             <AlertDialogTitle>Apagar exercício?</AlertDialogTitle>
             <AlertDialogDescription>
-              Isto irá remover o exercício do catálogo e das suas rotinas.
+              Isso vai remover este exercício das rotinas futuras. Os treinos já registrados permanecerão no histórico.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -1,7 +1,7 @@
 "use client"
 
 // Simple localStorage-based auth system
-export const authApi = {
+const authApi = {
   isAuthenticated(): boolean {
     if (typeof window === "undefined") return false
     const currentUser = localStorage.getItem("currentUser")
@@ -140,3 +140,9 @@ export const authApi = {
 }
 
 export const auth = authApi
+export { authApi }
+export default authApi
+
+export function createSupabaseClient() {
+  throw new Error("Supabase is not configured. This app uses localStorage-based authentication.")
+}

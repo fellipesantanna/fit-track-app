@@ -1,71 +1,103 @@
+// =========================
+// Categorias de exercício
+// =========================
 export type ExerciseCategory =
-  | "weight-reps" // Peso & Repetições
-  | "bodyweight-reps" // Repetições de Peso Corporal
-  | "duration" // Duração
-  | "distance-duration" // Distância & Duração
+  | "weight-reps"
+  | "bodyweight-reps"
+  | "duration"
+  | "distance-duration"
 
+// =========================
+// Exercício (domínio)
+// =========================
 export interface Exercise {
   id: string
   name: string
   category: ExerciseCategory
-  photoUrl?: string
+  photoUrl: string | null
   createdAt: Date
   userId: string
 }
 
-export interface WeightRepsSet {
-  type: "weight-reps"
-  reps: number
-  weight: number
+// DTO para criar/editar exercício
+export interface SaveExerciseDto {
+  name: string
+  category: ExerciseCategory
+  photoUrl?: string | null
 }
 
-export interface BodyweightRepsSet {
-  type: "bodyweight-reps"
-  reps: number
-}
-
-export interface DurationSet {
-  type: "duration"
-  duration: number // em segundos
-}
-
-export interface DistanceDurationSet {
-  type: "distance-duration"
-  duration: number // em segundos (stored internally, but input as hours + minutes)
-  distance: number // em metros
-}
-
-export type Set = WeightRepsSet | BodyweightRepsSet | DurationSet | DistanceDurationSet
-
+// =========================
+// Rotina (domínio)
+// =========================
 export interface Routine {
   id: string
   name: string
-  exerciseIds: string[] // referências aos exercícios
-  exerciseConfig?: {
-    [exerciseId: string]: {
-      suggestedSets?: number
-      suggestedReps?: number
-      advancedTechnique?: string
-      order: number // para drag and drop
-    }
-  }
   createdAt: Date
   userId: string
+  exercises: RoutineExercise[]
+}
+
+export interface RoutineExercise {
+  id: string
+  exerciseId: string
+  position: number
+  suggestedSets?: number
+  suggestedReps?: number
+  advancedTechnique?: string
+}
+
+// DTO para criar rotina
+export interface CreateRoutineDto {
+  name: string
+  exercises: {
+    exerciseId: string
+    position: number
+    suggestedSets?: number
+    suggestedReps?: number
+    advancedTechnique?: string
+  }[]
+}
+
+// =========================
+// Sessões
+// =========================
+export interface WorkoutSet {
+  id: string
+  setIndex: number
+  reps?: number
+  weightKg?: number
+  durationSec?: number
+  distanceM?: number
 }
 
 export interface SessionExercise {
   id: string
   exerciseId: string
-  sets: Set[]
-  notes?: string
+  exerciseName: string
+  category: ExerciseCategory
+  photoUrl?: string | null
+  position: number
+  sets: WorkoutSet[]
 }
 
-export interface WorkoutSession {
+export interface Session {
   id: string
-  date: Date
-  routineId?: string // opcional: pode ser treino vazio
-  routineName?: string
+  routineId: string
+  routineName: string
+  startedAt: Date
+  finishedAt: Date
   exercises: SessionExercise[]
-  duration?: number // duração total em minutos
-  userId: string
+}
+
+// DTO para criar sessão
+export interface CreateSessionDto {
+  routineId: string
+  routineName: string
+  startedAt: Date
+  finishedAt: Date
+  exercises: {
+    exerciseId: string
+    position: number
+    sets: WorkoutSet[]
+  }[]
 }

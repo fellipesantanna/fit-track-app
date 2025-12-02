@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card"
 import { AddExerciseDialog } from "@/components/add-exercise-dialog"
 import { ExerciseCard } from "@/components/exercise-card"
 import { useToast } from "@/hooks/use-toast"
+import { storage } from "@/lib/storage"
 import type { WorkoutExercise } from "@/lib/types"
 
 interface WorkoutSessionProps {

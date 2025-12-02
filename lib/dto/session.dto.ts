@@ -1,0 +1,23 @@
+// lib/dto/session.dto.ts
+
+export interface SessionSetInput {
+  setIndex: number
+  weightKg?: number | null
+  reps?: number | null
+  durationSec?: number | null
+  distanceM?: number | null
+}
+
+export interface SessionExerciseInput {
+  exerciseId: string
+  position: number
+  advancedTechnique?: string | null
+  sets: SessionSetInput[]
+}
+
+export interface CreateSessionDto {
+  routineId?: string | null
+  notes?: string | null
+  sessionDate?: Date | null
+  exercises: SessionExerciseInput[]
+}

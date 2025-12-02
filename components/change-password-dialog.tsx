@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
+import { auth } from "@/lib/auth"
 
 interface ChangePasswordDialogProps {
   open: boolean
@@ -25,7 +26,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
     e.preventDefault()
     setLoading(true)
 
-    const userId = const { user } = useUser()
+    const userId = auth.getCurrentUserId()
     if (!userId) {
       toast({
         title: "Erro",
