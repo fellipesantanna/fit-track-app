@@ -1,38 +1,55 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs"
+import { createServerClient } from "@supabase/ssr"
 
 export async function middleware(req: NextRequest) {
-  const res = NextResponse.next()
-  const supabase = createMiddlewareClient({ req, res })
+  const res = NextResponse.next({
+    request: {
+      headers: req.headers,
+    },
+  })
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return req.cookies.get(name)?.value
+        },
+        set(name: string, value: string, options: any) {
+          res.cookies.set(name, value, options)
+        },
+        remove(name: string, options: any) {
+          res.cookies.delete(name, options)
+        },
+      },
+    }
+  )
 
-  const pathname = req.nextUrl.pathname
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  // Rotas públicas
-  const publicRoutes = ["/login", "/register"]
-  const isPublic = publicRoutes.includes(pathname)
+  const url = req.nextUrl.pathname
+  const publicRoutes = ["/auth/login", "/auth/register"]
 
-  // Se não está logado e quer acessar rota protegida → manda para login
-  if (!user && !isPublic) {
-    const url = req.nextUrl.clone()
-    url.pathname = "/login"
-    return NextResponse.redirect(url)
+  // not logged in → redirect to login
+  if (!user && !publicRoutes.includes(url)) {
+    return NextResponse.redirect(new URL("/auth/login", req.url))
   }
 
-  // Se está logado e tenta entrar em login → manda para home
-  if (user && isPublic) {
-    const url = req.nextUrl.clone()
-    url.pathname = "/"
-    return NextResponse.redirect(url)
+  // logged in but visiting login/register → redirect to home
+  if (user && publicRoutes.includes(url)) {
+    return NextResponse.redirect(new URL("/", req.url))
   }
 
   return res
 }
 
+
 export const config = {
   matcher: [
-    "/((?!_next|favicon.ico|public).*)",
+    "/((?!_next/static|_next/image|favicon.ico|public).*)",
   ],
 }

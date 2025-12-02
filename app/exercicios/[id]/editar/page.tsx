@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { exercisesApi } from "@/lib/api/exercises"
+import { exercisesApi } from "@/lib/api/exercise"
 import { Exercise, ExerciseCategory } from "@/lib/types"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"

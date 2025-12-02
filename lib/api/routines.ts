@@ -1,6 +1,6 @@
-import { supabase } from "../supabase"
-import { CreateRoutineDto } from "../types"
-import { mapDbRoutine } from "../mappers/routine"
+import { supabase } from "@/lib/supabase"
+import { CreateRoutineDto } from "@lib/types"
+import { mapDbRoutine } from "@lib/mappers/routine"
 
 export const routinesApi = {
   async getAll() {

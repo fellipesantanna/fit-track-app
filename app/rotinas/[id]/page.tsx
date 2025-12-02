@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { routinesApi } from "@/lib/api/routines"
-import { exercisesApi } from "@/lib/api/exercises"
+import { exercisesApi } from "@/lib/api/exercise"
 import { Routine, Exercise, RoutineExercise } from "@/lib/types"
 import { RoutineExerciseEditor } from "@/components/routines/RoutineExerciseEditor"
 import { Button } from "@/components/ui/button"

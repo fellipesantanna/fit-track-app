@@ -1,6 +1,6 @@
-import { supabase } from "../supabase"
-import { SaveExerciseDto } from "../types"
-import { mapDbExercise } from "../mappers/exercise"
+import { supabase } from "@lib/supabase"
+import { SaveExerciseDto } from "@lib/types"
+import { mapDbExercise } from "@lib/mappers/exercise"
 
 export const exercisesApi = {
   async getAll() {

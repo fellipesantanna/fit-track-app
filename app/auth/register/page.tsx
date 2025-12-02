@@ -2,10 +2,10 @@
 
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/lib/supabase" // se o teu client estiver em outro arquivo, ajusta o caminho
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Loader2, UserPlus } from "lucide-react"
+import { Loader2, UserPlus2 } from "lucide-react"
 import { motion } from "framer-motion"
 
 export default function RegisterPage() {
@@ -13,23 +13,39 @@ export default function RegisterPage() {
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [loading, setLoading] = useState(false)
 
-  async function register() {
-    setLoading(true)
-    const { error } = await supabase.auth.signUp({
-      email,
-      password
-    })
-    setLoading(false)
-
-    if (error) {
-      alert(error.message)
+  async function handleRegister() {
+    if (!email || !password) {
+      alert("Preencha e-mail e senha.")
       return
     }
 
-    alert("Conta criada! Faça login.")
-    router.push("/login")
+    if (password !== confirmPassword) {
+      alert("As senhas não coincidem.")
+      return
+    }
+
+    setLoading(true)
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    })
+
+    setLoading(false)
+
+    if (error) {
+      console.error("Erro no cadastro Supabase:", error)
+      alert(error.message || "Erro ao criar conta. Tente novamente.")
+      return
+    }
+
+    console.log("Usuário criado:", data)
+
+    alert("Conta criada com sucesso! Agora faça login.")
+    router.push("/auth/login")
   }
 
   return (
@@ -38,8 +54,7 @@ export default function RegisterPage() {
       animate={{ opacity: 1, y: 0 }}
       className="min-h-screen flex items-center justify-center p-6"
     >
-      <div className="w-full max-w-sm rounded-xl border bg-card shadow dark:bg-card/70 p-6 flex flex-col gap-5">
-
+      <div className="w-full max-w-sm rounded-xl border bg-card dark:bg-card/70 shadow p-6 flex flex-col gap-5">
         <h1 className="text-2xl font-bold text-center">Criar conta</h1>
         <p className="text-muted-foreground text-center text-sm">
           Comece a registrar seus treinos
@@ -54,20 +69,27 @@ export default function RegisterPage() {
 
           <Input
             type="password"
-            placeholder="Crie uma senha"
+            placeholder="Senha (mínimo 6 caracteres)"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
 
+          <Input
+            type="password"
+            placeholder="Confirmar senha"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+          />
+
           <Button
-            onClick={register}
+            onClick={handleRegister}
             disabled={loading}
             className="w-full flex items-center gap-2 bg-purple-600 hover:bg-purple-700 py-5"
           >
             {loading ? (
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
-              <UserPlus className="w-5 h-5" />
+              <UserPlus2 className="w-5 h-5" />
             )}
             Criar conta
           </Button>
@@ -75,12 +97,11 @@ export default function RegisterPage() {
 
         <Button
           variant="ghost"
-          onClick={() => router.push("/login")}
+          onClick={() => router.push("/auth/login")}
           className="text-sm"
         >
           Já tenho uma conta →
         </Button>
-
       </div>
     </motion.div>
   )

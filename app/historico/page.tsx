@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { sessionsApi } from "@/lib/api/sessions"
+import { sessionsApi } from "@/lib/api/session"
 import { WorkoutSession } from "@/lib/types"
 
 export default function HistoricoPage() {

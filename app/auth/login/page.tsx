@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/lib/supabase" // usa o mesmo client que você já está usando
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Loader2, LogIn } from "lucide-react"
@@ -15,19 +15,30 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
 
-  async function login() {
-    setLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-    setLoading(false)
-
-    if (error) {
-      alert("Credenciais inválidas.")
+  async function handleLogin() {
+    if (!email || !password) {
+      alert("Preencha e-mail e senha.")
       return
     }
 
+    setLoading(true)
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    setLoading(false)
+
+    if (error) {
+      console.error("Erro no login Supabase:", error)
+
+      // mostra a mensagem real do Supabase (email não confirmado, senha errada etc.)
+      alert(error.message || "Erro ao fazer login. Verifique os dados.")
+      return
+    }
+
+    console.log("Login OK:", data)
     router.push("/")
   }
 
@@ -38,7 +49,6 @@ export default function LoginPage() {
       className="min-h-screen flex items-center justify-center p-6"
     >
       <div className="w-full max-w-sm rounded-xl border bg-card dark:bg-card/70 shadow p-6 flex flex-col gap-5">
-        
         <h1 className="text-2xl font-bold text-center">Entrar</h1>
         <p className="text-muted-foreground text-center text-sm">
           Acesse sua conta de treino
@@ -59,7 +69,7 @@ export default function LoginPage() {
           />
 
           <Button
-            onClick={login}
+            onClick={handleLogin}
             disabled={loading}
             className="w-full flex items-center gap-2 bg-purple-600 hover:bg-purple-700 py-5"
           >
@@ -74,12 +84,11 @@ export default function LoginPage() {
 
         <Button
           variant="ghost"
-          onClick={() => router.push("/register")}
+          onClick={() => router.push("/auth/register")}
           className="text-sm"
         >
           Criar nova conta →
         </Button>
-
       </div>
     </motion.div>
   )

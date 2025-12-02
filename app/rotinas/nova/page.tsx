@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { exercisesApi } from "@/lib/api/exercises"
+import { exercisesApi } from "@/lib/api/exercise"
 import { routinesApi } from "@/lib/api/routines"
 import { Exercise, RoutineExercise } from "@/lib/types"
 import { RoutineExerciseEditor } from "@/components/routines/RoutineExerciseEditor"

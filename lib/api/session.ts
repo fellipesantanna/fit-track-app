@@ -1,6 +1,6 @@
-import { supabase } from "../supabase"
-import { CreateSessionDto } from "../types"
-import { mapDbSession } from "../mappers/session"
+import { supabase } from "@/lib/supabase"
+import { CreateSessionDto } from "@/lib/types"
+import { mapDbSession } from "@/lib/mappers/session"
 
 export const sessionsApi = {
   async getAll() {
@@ -21,7 +21,7 @@ export const sessionsApi = {
       .from("sessions")
       .select(`
         *,
-        session_exercises(
+        session_exercises (
           *,
           sets(*)
         )
@@ -37,7 +37,6 @@ export const sessionsApi = {
   async create(dto: CreateSessionDto) {
     const user = (await supabase.auth.getUser()).data.user
 
-    // 1) Criar sessão
     const { data: session, error } = await supabase
       .from("sessions")
       .insert({
@@ -52,7 +51,6 @@ export const sessionsApi = {
 
     if (error) throw error
 
-    // 2) Inserir exercícios
     for (const ex of dto.exercises) {
       const { data: dbEx, error: exErr } = await supabase
         .from("session_exercises")
@@ -66,7 +64,6 @@ export const sessionsApi = {
 
       if (exErr) throw exErr
 
-      // 3) Inserir sets
       for (const set of ex.sets) {
         const { error: setErr } = await supabase
           .from("sets")

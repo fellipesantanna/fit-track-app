@@ -5,12 +5,12 @@ import { useSearchParams, useRouter } from "next/navigation"
 import { SessionExerciseCard } from "@/components/session/SessionExerciseCard"
 import { Button } from "@/components/ui/button"
 import { Loader2, Save, ArrowLeft } from "lucide-react"
-import { sessionsApi } from "@/lib/api/sessions"
+import { sessionsApi } from "@/lib/api/session"
 import { routinesApi } from "@/lib/api/routines"
 import { Exercise, Routine, SessionExercise, WorkoutSet } from "@/lib/types"
 import { Separator } from "@/components/ui/separator"
 import { motion } from "framer-motion"
-import { exercisesApi } from "@/lib/api/exercises"
+import { exercisesApi } from "@/lib/api/exercise"
 
 export default function SessaoPage() {
   const searchParams = useSearchParams()

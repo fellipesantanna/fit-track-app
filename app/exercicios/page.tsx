@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { exercisesApi } from "@/lib/api/exercises"
+import { exercisesApi } from "@/lib/api/exercise"
 import { Exercise } from "@/lib/types"
 
 export default function ExercisesPage() {

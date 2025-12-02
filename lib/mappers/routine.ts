@@ -1,4 +1,4 @@
-import { Routine } from "../types"
+import { Routine } from "@lib/types"
 
 export function mapDbRoutine(row: any): Routine {
   return {
