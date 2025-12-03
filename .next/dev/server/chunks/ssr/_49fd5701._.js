@@ -192,7 +192,6 @@ function mapDbSession(db) {
 "[project]/lib/api/session.ts [app-ssr] (ecmascript)", ((__turbopack_context__) => {
 "use strict";
 
-// lib/api/session.ts
 __turbopack_context__.s([
     "sessionsApi",
     ()=>sessionsApi
@@ -202,21 +201,15 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$mappers$2f$session$2e
 ;
 ;
 const sessionsApi = {
-    /** -------------------------------------------------------------------------
-   * GET ALL SESSIONS (mais recentes primeiro)
-   ------------------------------------------------------------------------- */ async getAll () {
+    async getAll () {
         const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$supabase$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["supabase"].from("sessions").select(`
         id,
         routine_id,
-        routine_name,
         started_at,
         finished_at,
         session_exercises (
           id,
           exercise_id,
-          exercise_name,
-          category,
-          position,
           sets (
             id,
             set_index,
@@ -232,21 +225,15 @@ const sessionsApi = {
         if (error) throw error;
         return data.map(__TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$mappers$2f$session$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["mapDbSession"]);
     },
-    /** -------------------------------------------------------------------------
-   * GET SESSION BY ID (histórico/[id])
-   ------------------------------------------------------------------------- */ async getById (id) {
+    async getById (id) {
         const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$supabase$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["supabase"].from("sessions").select(`
         id,
         routine_id,
-        routine_name,
         started_at,
         finished_at,
         session_exercises (
           id,
           exercise_id,
-          exercise_name,
-          category,
-          position,
           sets (
             id,
             set_index,
@@ -260,71 +247,40 @@ const sessionsApi = {
         if (error) throw error;
         return (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$mappers$2f$session$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["mapDbSession"])(data);
     },
-    /** -------------------------------------------------------------------------
-   * GET LAST SESSION OF A ROUTINE (para reuso da rotina)
-   ------------------------------------------------------------------------- */ async getLastOfRoutine (routineId) {
-        const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$supabase$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["supabase"].from("sessions").select(`
-        id,
-        routine_id,
-        routine_name,
-        started_at,
-        finished_at,
-        session_exercises (
-          id,
-          exercise_id,
-          exercise_name,
-          category,
-          position,
-          sets (
-            id,
-            set_index,
-            reps,
-            weight_kg,
-            duration_sec,
-            distance_m
-          )
-        )
-      `).eq("routine_id", routineId).order("started_at", {
-            ascending: false
-        }).limit(1).maybeSingle();
-        if (error) throw error;
-        if (!data) return null;
-        return (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$mappers$2f$session$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["mapDbSession"])(data);
-    },
-    /** -------------------------------------------------------------------------
-   * CREATE SESSION
-   ------------------------------------------------------------------------- */ async create (dto) {
-        // 1) cria sessão
-        const { data: session, error: sessionErr } = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$supabase$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["supabase"].from("sessions").insert({
-            routine_id: dto.routineId,
-            routine_name: dto.routineName ?? null,
-            notes: dto.notes ?? null,
-            started_at: dto.sessionDate ?? new Date(),
-            finished_at: new Date()
+    async create (input) {
+        const { data: userData } = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$supabase$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["supabase"].auth.getUser();
+        const userId = userData?.user?.id;
+        if (!userId) throw new Error("Usuário não autenticado");
+        // 1) Criar sessão
+        const { data: session, error: err1 } = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$supabase$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["supabase"].from("sessions").insert({
+            user_id: userId,
+            routine_id: input.routineId,
+            started_at: input.startedAt,
+            finished_at: input.finishedAt
         }).select("*").single();
-        if (sessionErr) throw sessionErr;
-        // 2) cria exercises dentro da sessão
-        for (const ex of dto.exercises){
-            const { data: exRow, error: exErr } = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$supabase$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["supabase"].from("session_exercises").insert({
+        if (err1) throw err1;
+        // 2) Criar exercícios da sessão
+        for (const ex of input.exercises){
+            const { data: dbEx, error: err2 } = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$supabase$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["supabase"].from("session_exercises").insert({
                 session_id: session.id,
-                exercise_id: ex.exerciseId,
-                exercise_name: null,
-                category: null,
-                position: ex.position
+                exercise_id: ex.exerciseId
             }).select("*").single();
-            if (exErr) throw exErr;
-            const setsPayload = ex.sets.map((s)=>({
-                    session_exercise_id: exRow.id,
-                    set_index: s.setIndex,
-                    reps: s.reps ?? null,
-                    weight_kg: s.weightKg ?? null,
-                    duration_sec: s.durationSec ?? null,
-                    distance_m: s.distanceM ?? null
-                }));
-            const { error: setsErr } = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$supabase$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["supabase"].from("sets").insert(setsPayload);
-            if (setsErr) throw setsErr;
+            if (err2) throw err2;
+            // 3) Criar sets
+            if (ex.sets.length > 0) {
+                const setsPayload = ex.sets.map((s, i)=>({
+                        session_exercise_id: dbEx.id,
+                        set_index: i,
+                        reps: s.reps ?? null,
+                        weight_kg: s.weightKg ?? null,
+                        duration_sec: s.durationSec ?? null,
+                        distance_m: s.distanceM ?? null
+                    }));
+                const { error: err3 } = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$supabase$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["supabase"].from("sets").insert(setsPayload);
+                if (err3) throw err3;
+            }
         }
-        return true;
+        return this.getById(session.id);
     }
 };
 }),

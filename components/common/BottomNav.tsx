@@ -17,9 +17,10 @@ export function BottomNav() {
 
   return (
     <nav className="
-      fixed bottom-0 left-0 right-0
+      fixed bottom-0 left-0 right-0 z-50
       border-t bg-background/90 backdrop-blur
-      sm:hidden p-2 flex justify-around
+      p-2 flex justify-around
+      md:hidden     // <-- agora só mobile
     ">
       {tabs.map((tab) => {
         const active = pathname.startsWith(tab.href)

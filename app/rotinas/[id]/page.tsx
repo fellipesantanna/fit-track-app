@@ -127,6 +127,13 @@ export default function EditRoutinePage() {
           Apagar rotina
         </Button>
 
+        <Button
+          onClick={() => router.push(`/sessao?routine=${routineId}`)}
+          className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+        >
+          Iniciar treino
+        </Button>
+
         {/* Salvar */}
         <Button
           onClick={save}
@@ -143,4 +150,5 @@ export default function EditRoutinePage() {
       </div>
     </motion.div>
   )
+
 }

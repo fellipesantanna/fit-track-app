@@ -4,7 +4,7 @@ import { Inter } from "next/font/google"
 
 import { AppHeader } from "@/components/common/AppHeader"
 import { BottomNav } from "@/components/common/BottomNav"
-
+import { SidebarNav } from "@/components/common/SidebarNav"
 import { ThemeProvider } from "@/components/theme-provider"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -19,16 +19,26 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="pt-BR" suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider>
-          
+
+          {/* DESKTOP SIDEBAR */}
+          <SidebarNav />
+
           {/* HEADER */}
           <AppHeader />
 
-          {/* MAIN */}
-          <main className="flex-1 pb-20">
+          {/* MAIN CONTENT */}
+          <main
+            className="
+              flex-1
+              pb-20             /* espaço para bottom-nav mobile */
+              md:ml-60          /* espaço para sidebar desktop */
+              mt-[64px]         /* espaço para header */
+            "
+          >
             {children}
           </main>
 
-          {/* BOTTOM NAV */}
+          {/* MOBILE NAV */}
           <BottomNav />
 
         </ThemeProvider>

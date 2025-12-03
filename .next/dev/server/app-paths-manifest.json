@@ -1,5 +1,9 @@
 {
+  "/configuracoes/page": "app/configuracoes/page.js",
   "/dashboard/page": "app/dashboard/page.js",
+  "/estatisticas/page": "app/estatisticas/page.js",
+  "/historico/page": "app/historico/page.js",
+  "/rotinas/[id]/page": "app/rotinas/[id]/page.js",
   "/rotinas/nova/page": "app/rotinas/nova/page.js",
   "/rotinas/page": "app/rotinas/page.js"
 }

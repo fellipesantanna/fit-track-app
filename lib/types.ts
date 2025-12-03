@@ -92,12 +92,17 @@ export interface Session {
 // DTO para criar sessão
 export interface CreateSessionDto {
   routineId: string
-  routineName: string
-  startedAt: Date
-  finishedAt: Date
+  startedAt: string | Date
+  finishedAt: string | Date
   exercises: {
     exerciseId: string
-    position: number
-    sets: WorkoutSet[]
+    category: string
+    sets: {
+      id: string
+      reps?: number
+      weightKg?: number
+      durationSec?: number
+      distanceM?: number
+    }[]
   }[]
 }

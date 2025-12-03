@@ -16,7 +16,7 @@ import {
 } from "@dnd-kit/sortable"
 
 import { motion } from "framer-motion"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Grip, X, Plus } from "lucide-react"
 
 import { RoutineExercise, Exercise } from "@/lib/types"
@@ -38,11 +38,16 @@ export function RoutineExerciseEditor({
   onChange,
 }: Props) {
   const [items, setItems] = useState(initial)
-  const [selectorOpen, setSelectorOpen] = useState(false)
+  const [selectorOpen, setSelectorOpen] = useState(true)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   )
+
+  // 🔄 Atualiza caso exercises venham do servidor depois
+  useEffect(() => {
+    setItems(initial)
+  }, [initial])
 
   /* ---------------------------------- DND --------------------------------- */
 
@@ -77,10 +82,8 @@ export function RoutineExerciseEditor({
       id: crypto.randomUUID(),
       exerciseId: ex.id,
       position: items.length,
-
-      // usa sugestões camelCase vindas do mapper
-      suggestedSets: ex.suggestedReps ?? null,
-      suggestedReps: ex.suggestedReps ?? null,
+      suggestedSets: null,
+      suggestedReps: null,
       advancedTechnique: "",
     }
 
@@ -176,13 +179,13 @@ export function RoutineExerciseEditor({
                       </Button>
                     </div>
 
-                    {/* CAMPOS VARIÁVEIS */}
+                    {/* CAMPOS DE EDIÇÃO */}
                     <div className="grid grid-cols-3 gap-4 mt-4">
 
-                      {/* ✳ PARA TODAS AS CATEGORIAS: técnica avançada */}
-                      <div className="flex flex-col gap-1 col-span-3">
+                      {/* TECNICA AVANÇADA */}
+                      <div className="col-span-3 flex flex-col gap-1">
                         <label className="text-sm text-muted-foreground">
-                          Técnica avançada (opcional)
+                          Técnica avançada
                         </label>
                         <Input
                           placeholder="Ex: Drop-set, Rest-pause..."
@@ -193,13 +196,92 @@ export function RoutineExerciseEditor({
                         />
                       </div>
 
-                      {/* ================== PESO + REPS ================== */}
+                      {/* PESO + REPS */}
                       {ex.category === "peso_reps" && (
                         <>
                           <div className="flex flex-col gap-1">
-                            <label className="text-sm text-muted-foreground">
-                              Repetições
-                            </label>
+                            <label className="text-sm">Repetições sugeridas</label>
+                            <Input
+                              type="number"
+                              value={item.suggestedReps ?? ""}
+                              onChange={(e) =>
+                                updateField(item.id, "suggestedReps", Number(e.target.value))
+                              }
+                            />
+                          </div>
+
+                          <div className="flex flex-col gap-1 col-span-2">
+                            <label className="text-sm">Sets</label>
+                            <Input
+                              type="number"
+                              value={item.suggestedSets ?? ""}
+                              onChange={(e) =>
+                                updateField(item.id, "suggestedSets", Number(e.target.value))
+                              }
+                            />
+                          </div>
+                        </>
+                      )}
+
+                      {/* CORPO LIVRE */}
+                      {ex.category === "corpo_livre" && (
+                        <>
+                          <div className="flex flex-col gap-1 col-span-3">
+                            <label className="text-sm">Repetições sugeridas</label>
+                            <Input
+                              type="number"
+                              value={item.suggestedReps ?? ""}
+                              onChange={(e) =>
+                                updateField(item.id, "suggestedReps", Number(e.target.value))
+                              }
+                            />
+                          </div>
+
+                          <div className="flex flex-col gap-1 col-span-3">
+                            <label className="text-sm">Sets</label>
+                            <Input
+                              type="number"
+                              value={item.suggestedSets ?? ""}
+                              onChange={(e) =>
+                                updateField(item.id, "suggestedSets", Number(e.target.value))
+                              }
+                            />
+                          </div>
+                        </>
+                      )}
+
+                      {/* DURAÇÃO */}
+                      {ex.category === "duracao" && (
+                        <>
+                          <div className="flex flex-col gap-1">
+                            <label className="text-sm">Horas</label>
+                            <Input
+                              type="number"
+                              value={item.suggestedSets ?? ""}
+                              onChange={(e) =>
+                                updateField(item.id, "suggestedSets", Number(e.target.value))
+                              }
+                            />
+                          </div>
+
+                          <div className="flex flex-col gap-1">
+                            <label className="text-sm">Minutos</label>
+                            <Input
+                              type="number"
+                              value={item.suggestedReps ?? ""}
+                              onChange={(e) =>
+                                updateField(item.id, "suggestedReps", Number(e.target.value))
+                              }
+                            />
+                          </div>
+                        </>
+                      )}
+
+                      {/* DISTÂNCIA + DURAÇÃO */}
+                      {ex.category === "distancia_duracao" && (
+                        <>
+                          <div className="flex flex-col gap-1">
+                            <label className="text-sm">Distância (m)</label>
                             <Input
                               type="number"
                               value={item.suggestedReps ?? ""}
@@ -210,79 +292,17 @@ export function RoutineExerciseEditor({
                           </div>
 
                           <div className="flex flex-col gap-1">
-                            <label className="text-sm text-muted-foreground">
-                              Carga (kg)
-                            </label>
+                            <label className="text-sm">Duração (min)</label>
                             <Input
                               type="number"
-                              value={ex.suggestedWeight ?? ""}
-                              disabled
-                              className="opacity-50"
+                              value={item.suggestedSets ?? ""}
+                              onChange={(e) =>
+                                updateField(item.id, "suggestedSets", Number(e.target.value))
+                              }
                             />
                           </div>
                         </>
                       )}
-
-                      {/* ================== CORPO LIVRE ================== */}
-                      {ex.category === "corpo_livre" && (
-                        <div className="flex flex-col gap-1 col-span-3">
-                          <label className="text-sm text-muted-foreground">
-                            Repetições
-                          </label>
-                          <Input
-                            type="number"
-                            value={item.suggestedReps ?? ""}
-                            onChange={(e) =>
-                              updateField(item.id, "suggestedReps", Number(e.target.value))
-                            }
-                          />
-                        </div>
-                      )}
-
-                      {/* ================== DURAÇÃO ================== */}
-                      {ex.category === "duracao" && (
-                        <div className="flex flex-col gap-1 col-span-3">
-                          <label className="text-sm text-muted-foreground">
-                            Tempo (segundos)
-                          </label>
-                          <Input
-                            type="number"
-                            value={ex.suggestedTime ?? ""}
-                            disabled
-                            className="opacity-50"
-                          />
-                        </div>
-                      )}
-
-                      {/* ========== DISTÂNCIA + DURAÇÃO ========== */}
-                      {ex.category === "distancia_duracao" && (
-                        <>
-                          <div className="flex flex-col gap-1">
-                            <label className="text-sm text-muted-foreground">
-                              Distância (m)
-                            </label>
-                            <Input
-                              type="number"
-                              value={ex.suggestedDistance ?? ""}
-                              disabled
-                              className="opacity-50"
-                            />
-                          </div>
-
-                          <div className="flex flex-col gap-1">
-                            <label className="text-sm text-muted-foreground">
-                              Tempo (segundos)
-                            </label>
-                            <Input
-                              type="number"
-                              value={ex.suggestedTime ?? ""}
-                              disabled
-                              className="opacity-50"
-                            />
-                          </div>
-                        </>
-                      )}
-
                     </div>
 
                   </motion.div>

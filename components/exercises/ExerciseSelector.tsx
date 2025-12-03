@@ -15,6 +15,7 @@ interface Props {
 export function ExerciseSelector({ exercises, selected, onToggle }: Props) {
   const [query, setQuery] = useState("")
   const [createOpen, setCreateOpen] = useState(false)
+  const [localExercises, setLocalExercises] = useState<Exercise[]>(exercises)
 
   const categories = [
     { key: "all", label: "Todos" },
@@ -26,28 +27,34 @@ export function ExerciseSelector({ exercises, selected, onToggle }: Props) {
 
   const [activeCategory, setActiveCategory] = useState("all")
 
-  const filtered = exercises.filter((ex) => {
-    const matchesQuery =
-      ex.name.toLowerCase().includes(query.toLowerCase())
-
+  // 🔍 FILTRAR LISTA
+  const filtered = localExercises.filter(ex => {
+    const matchesQuery = ex.name.toLowerCase().includes(query.toLowerCase())
     const matchesCategory =
       activeCategory === "all" || ex.category === activeCategory
-
     return matchesQuery && matchesCategory
   })
+
+  // 📌 Quando cria exercício → adiciona + seleciona + fecha modal
+  function handleCreated(newExercise: Exercise) {
+    setLocalExercises(prev => [...prev, newExercise])
+    onToggle(newExercise.id)
+    setCreateOpen(false)
+  }
 
   return (
     <div className="flex flex-col gap-4">
 
+      {/* 🔎 Busca */}
       <Input
         placeholder="Buscar exercício..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
 
-      {/* CATEGORIES */}
+      {/* Categorias */}
       <div className="flex gap-2 flex-wrap">
-        {categories.map((c) => (
+        {categories.map(c => (
           <button
             key={c.key}
             onClick={() => setActiveCategory(c.key)}
@@ -62,6 +69,7 @@ export function ExerciseSelector({ exercises, selected, onToggle }: Props) {
         ))}
       </div>
 
+      {/* LISTA DE EXERCÍCIOS */}
       <div className="flex flex-col gap-2 max-h-[260px] overflow-y-auto pr-2">
         {filtered.map((ex) => {
           const isSelected = selected.includes(ex.id)
@@ -70,8 +78,8 @@ export function ExerciseSelector({ exercises, selected, onToggle }: Props) {
             <button
               key={ex.id}
               onClick={() => onToggle(ex.id)}
-              className={`flex justify-between items-center p-3 rounded-lg border ${
-                isSelected ? "bg-purple-600 text-white" : "bg-card"
+              className={`flex justify-between items-center p-3 rounded-lg border transition ${
+                isSelected ? "bg-purple-600 text-white border-purple-600" : "bg-card"
               }`}
             >
               {ex.name}
@@ -86,6 +94,7 @@ export function ExerciseSelector({ exercises, selected, onToggle }: Props) {
         )}
       </div>
 
+      {/* BOTÃO CRIAR EXERCÍCIO */}
       <Button
         variant="outline"
         className="w-full"
@@ -94,13 +103,11 @@ export function ExerciseSelector({ exercises, selected, onToggle }: Props) {
         Criar novo exercício
       </Button>
 
+      {/* MODAL */}
       {createOpen && (
         <CreateExerciseModal
           onClose={() => setCreateOpen(false)}
-          onCreated={(ex) => {
-            onToggle(ex.id)
-            setCreateOpen(false)
-          }}
+          onCreated={handleCreated}
         />
       )}
     </div>

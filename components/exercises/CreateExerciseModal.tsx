@@ -1,12 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { Exercise } from "@/lib/types"
 import { exercisesApi } from "@/lib/api/exercise"
+import { Exercise } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { X } from "lucide-react"
 import { motion } from "framer-motion"
+import { supabase } from "@/lib/supabase"
 
 interface Props {
   onClose: () => void
@@ -20,34 +21,65 @@ export function CreateExerciseModal({ onClose, onCreated }: Props) {
   const [photoUrl, setPhotoUrl] = useState("")
   const [category, setCategory] = useState<Exercise["category"]>("peso_reps")
 
+  // SUGGESTIONS
   const [reps, setReps] = useState<number | "">("")
   const [weight, setWeight] = useState<number | "">("")
-  const [time, setTime] = useState<number | "">("")
-  const [distance, setDistance] = useState<number | "">("")
+
+  // duração
+  const [hours, setHours] = useState<number | "">("")
+  const [minutes, setMinutes] = useState<number | "">("")
+
+  // distância
+  const [km, setKm] = useState<number | "">("")
+  const [meters, setMeters] = useState<number | "">("")
 
   async function save() {
-    if (!name.trim()) {
-      alert("Dê um nome ao exercício.")
-      return
-    }
+    if (!name.trim()) return alert("Dê um nome ao exercício.")
 
     setLoading(true)
 
-    const payload = {
+    // usuário
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return alert("Você precisa estar logado.")
+
+    // converter tempo
+    const totalMinutes =
+      (typeof hours === "number" ? hours : 0) * 60 +
+      (typeof minutes === "number" ? minutes : 0)
+
+    // converter distância
+    const totalMeters =
+      (typeof km === "number" ? km * 1000 : 0) +
+      (typeof meters === "number" ? meters : 0)
+
+    const dto = {
       name,
-      photo_url: photoUrl || null,
+      userId: user.id,
       category,
-      suggested_reps: reps || null,
-      suggested_weight: weight || null,
-      suggested_time: time || null,
-      suggested_distance: distance || null,
+      photoUrl: photoUrl || null,
+
+      suggestedReps: reps || null,
+      suggestedWeight: weight || null,
+
+      suggestedTime: category === "duracao" || category === "distancia_duracao"
+        ? totalMinutes || null
+        : null,
+
+      suggestedDistance: category === "distancia_duracao"
+        ? totalMeters || null
+        : null,
     }
 
-    const created = await exercisesApi.create(payload)
-
-    onCreated(created)
-    setLoading(false)
-    onClose()
+    try {
+      const created = await exercisesApi.create(dto, user.id)
+      onCreated(created)
+      onClose()
+    } catch (err) {
+      console.error(err)
+      alert("Erro ao salvar exercício.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -58,7 +90,6 @@ export function CreateExerciseModal({ onClose, onCreated }: Props) {
     >
       <div className="bg-card w-full max-w-lg rounded-xl p-6 relative shadow-xl">
 
-        {/* CLOSE BUTTON */}
         <button
           onClick={onClose}
           className="absolute top-3 right-3 text-muted-foreground hover:text-foreground"
@@ -70,34 +101,33 @@ export function CreateExerciseModal({ onClose, onCreated }: Props) {
 
         <div className="flex flex-col gap-4">
 
+          {/* foto */}
           <Input
             placeholder="URL da foto (opcional)"
             value={photoUrl}
-            onChange={(e) => setPhotoUrl(e.target.value)}
+            onChange={e => setPhotoUrl(e.target.value)}
           />
 
+          {/* nome */}
           <Input
             placeholder="Nome do exercício"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={e => setName(e.target.value)}
           />
 
-          {/* CATEGORIES */}
+          {/* categorias */}
           <div>
             <label className="text-sm text-muted-foreground">Categoria</label>
-
             <div className="grid grid-cols-1 gap-2 mt-2">
               {[
                 { key: "peso_reps", label: "Peso + Repetições" },
                 { key: "corpo_livre", label: "Corpo Livre" },
                 { key: "duracao", label: "Duração" },
                 { key: "distancia_duracao", label: "Distância + Duração" },
-              ].map((cat) => (
+              ].map(cat => (
                 <button
                   key={cat.key}
-                  onClick={() =>
-                    setCategory(cat.key as Exercise["category"])
-                  }
+                  onClick={() => setCategory(cat.key as Exercise["category"])}
                   className={`border p-3 rounded-lg text-left ${
                     category === cat.key ? "border-purple-500 bg-purple-500/10" : ""
                   }`}
@@ -108,7 +138,7 @@ export function CreateExerciseModal({ onClose, onCreated }: Props) {
             </div>
           </div>
 
-          {/* SUGGESTION INPUTS BASED ON CATEGORY */}
+          {/* CAMPOS POR CATEGORIA */}
 
           {category === "peso_reps" && (
             <>
@@ -116,13 +146,14 @@ export function CreateExerciseModal({ onClose, onCreated }: Props) {
                 type="number"
                 placeholder="Repetições sugeridas"
                 value={reps}
-                onChange={(e) => setReps(Number(e.target.value))}
+                onChange={e => setReps(Number(e.target.value))}
               />
+
               <Input
                 type="number"
                 placeholder="Peso sugerido (kg)"
                 value={weight}
-                onChange={(e) => setWeight(Number(e.target.value))}
+                onChange={e => setWeight(Number(e.target.value))}
               />
             </>
           )}
@@ -132,33 +163,58 @@ export function CreateExerciseModal({ onClose, onCreated }: Props) {
               type="number"
               placeholder="Repetições sugeridas"
               value={reps}
-              onChange={(e) => setReps(Number(e.target.value))}
+              onChange={e => setReps(Number(e.target.value))}
             />
           )}
 
           {category === "duracao" && (
-            <Input
-              type="number"
-              placeholder="Duração sugerida (segundos)"
-              value={time}
-              onChange={(e) => setTime(Number(e.target.value))}
-            />
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                type="number"
+                placeholder="Horas"
+                value={hours}
+                onChange={e => setHours(Number(e.target.value))}
+              />
+              <Input
+                type="number"
+                placeholder="Minutos"
+                value={minutes}
+                onChange={e => setMinutes(Number(e.target.value))}
+              />
+            </div>
           )}
 
           {category === "distancia_duracao" && (
             <>
-              <Input
-                type="number"
-                placeholder="Distância sugerida (m)"
-                value={distance}
-                onChange={(e) => setDistance(Number(e.target.value))}
-              />
-              <Input
-                type="number"
-                placeholder="Duração sugerida (segundos)"
-                value={time}
-                onChange={(e) => setTime(Number(e.target.value))}
-              />
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  type="number"
+                  placeholder="Km"
+                  value={km}
+                  onChange={e => setKm(Number(e.target.value))}
+                />
+                <Input
+                  type="number"
+                  placeholder="Metros"
+                  value={meters}
+                  onChange={e => setMeters(Number(e.target.value))}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  type="number"
+                  placeholder="Horas"
+                  value={hours}
+                  onChange={e => setHours(Number(e.target.value))}
+                />
+                <Input
+                  type="number"
+                  placeholder="Minutos"
+                  value={minutes}
+                  onChange={e => setMinutes(Number(e.target.value))}
+                />
+              </div>
             </>
           )}
 
@@ -169,6 +225,7 @@ export function CreateExerciseModal({ onClose, onCreated }: Props) {
           >
             Salvar exercício
           </Button>
+
         </div>
       </div>
     </motion.div>

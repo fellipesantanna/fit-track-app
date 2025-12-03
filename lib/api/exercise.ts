@@ -23,8 +23,8 @@ export const exercisesApi = {
     return mapDbExercise(data);
   },
 
-  async create(exercise: any) {
-    const payload = toDbExercisePayload(exercise);
+  async create(dto: any, userId: string) {
+    const payload = toDbExercisePayload({ ...dto, userId });
 
     const { data, error } = await supabase
       .from("exercises")

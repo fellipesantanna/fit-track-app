@@ -1,257 +1,213 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
-import { SessionExerciseCard } from "@/components/session/SessionExerciseCard"
-import { Button } from "@/components/ui/button"
-import { Loader2, Save, ArrowLeft } from "lucide-react"
-import { sessionsApi } from "@/lib/api/session"
+import { useEffect, useState } from "react"
 import { routinesApi } from "@/lib/api/routines"
+import { sessionsApi } from "@/lib/api/session"
 import { exercisesApi } from "@/lib/api/exercise"
-import {
-  Exercise,
-  Routine,
-  SessionExercise,
-  WorkoutSet,
-  ExerciseCategory,
-  Session
-} from "@/lib/types"
-import { Separator } from "@/components/ui/separator"
-import { motion } from "framer-motion"
+import { Button } from "@/components/ui/button"
+import { Loader2 } from "lucide-react"
 
-export default function SessaoPage() {
-  const searchParams = useSearchParams()
-  const routineId = searchParams.get("id")
+// Estrutura local para montar os exercícios da sessão
+type SessionExerciseDraft = {
+  exerciseId: string
+  name: string
+  category: string
+  position: number
+  sets: {
+    id: string
+    reps: number | null
+    weightKg: number | null
+    durationSec: number | null
+    distanceM: number | null
+  }[]
+}
+
+export default function SessionPage() {
+  const search = useSearchParams()
   const router = useRouter()
+
+  const routineId = search.get("routine")
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [routine, setRoutine] = useState<any>(null)
+  const [sets, setSets] = useState<any[]>([]);
+  
 
-  const [routine, setRoutine] = useState<Routine | null>(null)
-  const [exercises, setExercises] = useState<Exercise[]>([])
-  const [sessionExercises, setSessionExercises] = useState<SessionExercise[]>([])
-  const [lastSession, setLastSession] = useState<Session | null>(null)
+  // momento que o treino começou
+  const [startedAt] = useState(() => new Date())
 
-  const [sessionStartTimestamp] = useState(Date.now())
+  // exercícios desta sessão (com sets sendo preenchidos pelo usuário)
+  const [sessionExercises, setSessionExercises] = useState<SessionExerciseDraft[]>([])
 
-  function buildInitialSets(
-    category: ExerciseCategory,
-    suggestedSets?: number | null,
-    suggestedReps?: number | null
-  ): WorkoutSet[] {
-    const totalSets = suggestedSets ?? 0
-    const reps = suggestedReps ?? 10
-
-    const list: WorkoutSet[] = []
-
-    for (let i = 0; i < totalSets; i++) {
-      list.push({
-        id: crypto.randomUUID(),
-        setIndex: i,
-        reps: category.includes("reps") ? reps : null,
-        weightKg: category === "weight-reps" ? 20 : null,
-        durationSec: category.includes("duration") ? 30 : null,
-        distanceM: category === "distance-duration" ? 100 : null,
-      })
-    }
-
-    return list
-  }
-
-  // ------------------------------------------------------------------------
-  // Mesclar sets novos + última sessão
-  // ------------------------------------------------------------------------
-  function mergeWithLastSession(
-    exerciseId: string,
-    baseSets: WorkoutSet[],
-    last: Session | null
-  ): WorkoutSet[] {
-    if (!last) return baseSets
-
-    const lastEx = last.exercises.find(e => e.exerciseId === exerciseId)
-    if (!lastEx) return baseSets
-
-    if (lastEx.sets.length === 0) return baseSets
-
-    return lastEx.sets.map((set, idx) => ({
-      id: crypto.randomUUID(),
-      setIndex: idx,
-      reps: set.reps ?? null,
-      weightKg: set.weightKg ?? null,
-      durationSec: set.durationSec ?? null,
-      distanceM: set.distanceM ?? null,
-    }))
-  }
-
-  // ------------------------------------------------------------------------
-  // Load routine + exercises + last session
-  // ------------------------------------------------------------------------
+  // =========================================================
+  // Carregar rotina + exercícios
+  // =========================================================
   useEffect(() => {
-    if (!routineId) {
-      router.push("/rotinas")
-      return
-    }
-
     async function load() {
-      try {
-        setLoading(true)
+      if (!routineId) {
+        router.push("/rotinas")
+        return
+      }
 
-        const [routineData, allExercises] = await Promise.all([
+      setLoading(true)
+      try {
+        const [r, allExercises] = await Promise.all([
           routinesApi.getById(routineId),
-          exercisesApi.getAll()
+          exercisesApi.getAll(),
         ])
 
-        setRoutine(routineData)
-        setExercises(allExercises)
+        setRoutine(r)
 
-        // NOVO: PUXA APENAS A ÚLTIMA SESSÃO CORRETA
-        const last = await sessionsApi.getLastOfRoutine(routineId)
-        setLastSession(last)
-
-        const prepared: SessionExercise[] = routineData.exercises.map((re, idx) => {
-          const ex = allExercises.find(e => e.id === re.exerciseId)
-
-          const baseSets = buildInitialSets(
-            ex?.category ?? "weight-reps",
-            re.suggestedSets,
-            re.suggestedReps
-          )
-
-          const finalSets = mergeWithLastSession(
-            re.exerciseId,
-            baseSets,
-            last
-          )
+        const prepared: SessionExerciseDraft[] = r.exercises.map((re: any, idx: number) => {
+          const ex = allExercises.find((e: any) => e.id === re.exerciseId)
 
           return {
-            id: crypto.randomUUID(),
             exerciseId: re.exerciseId,
-            exerciseName: ex?.name ?? "Exercício",
-            category: ex?.category ?? "weight-reps",
-            position: idx,
-            sets: finalSets,
+            name: ex?.name ?? "Exercício",
+            category: ex?.category ?? "peso_reps", // default se não achar
+            position: re.position ?? idx,
+            sets: [], // usuário vai preenchendo
           }
         })
 
         setSessionExercises(prepared)
-
-      } catch (err) {
-        console.error(err)
-        alert("Erro ao carregar dados.")
       } finally {
         setLoading(false)
       }
     }
 
     load()
-  }, [routineId])
+  }, [routineId, router])
 
-  // ------------------------------------------------------------------------
-  // UPDATE SETS
-  // ------------------------------------------------------------------------
-  function updateExerciseSets(exerciseId: string, sets: WorkoutSet[]) {
-    setSessionExercises(prev =>
-      prev.map(se => se.exerciseId === exerciseId ? { ...se, sets } : se)
-    )
+  // =========================================================
+  // Adicionar um set simples (por enquanto só reps)
+  // =========================================================
+  function addSet(exerciseIndex: number) {
+    setSessionExercises(prev => {
+      const next = [...prev]
+      const ex = next[exerciseIndex]
+
+      ex.sets.push({
+        id: crypto.randomUUID(),
+        reps: 10,          // por enquanto fixo; depois você pode abrir um modal pra editar
+        weightKg: null,
+        durationSec: null,
+        distanceM: null,
+      })
+
+      return next
+    })
   }
 
-  // ------------------------------------------------------------------------
-  // SAVE
-  // ------------------------------------------------------------------------
-  async function saveSession() {
-    setSaving(true)
+  // =========================================================
+  // Finalizar treino
+  // =========================================================
+  async function finalizarTreino() {
+    if (!routine) {
+      alert("Rotina não carregada.");
+      return;
+    }
+
+    setSaving(true);
+
     try {
       await sessionsApi.create({
         routineId: routineId!,
-        routineName: routine?.name ?? "Treino",
-        sessionDate: new Date(sessionStartTimestamp),
-        exercises: sessionExercises.map(se => ({
-          exerciseId: se.exerciseId,
-          position: se.position,
-          sets: se.sets
+        startedAt: startedAt,
+        finishedAt: new Date(),
+        exercises: sets.map(ex => ({
+          exerciseId: ex.exerciseId,
+          category: ex.category,
+          sets: ex.sets.map((s: any) => ({
+            id: s.id ?? crypto.randomUUID(),
+            reps: s.reps ?? null,
+            weightKg: s.weightKg ?? null,
+            durationSec: s.durationSec ?? null,
+            distanceM: s.distanceM ?? null,
+          }))
         }))
-      })
+      });
 
-      router.push("/historico")
+      router.push("/historico");
     } catch (err) {
-      console.error(err)
-      alert("Erro ao salvar sessão.")
+      console.error(err);
+      alert("Erro ao salvar sessão.");
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
   }
 
-  // ------------------------------------------------------------------------
+
+  // =========================================================
   // UI
-  // ------------------------------------------------------------------------
+  // =========================================================
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[70vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+      <div className="flex justify-center items-center min-h-[70vh]">
+        <Loader2 className="w-8 h-8 animate-spin" />
       </div>
     )
   }
 
-  if (!routine) return <div>Rotina não encontrada.</div>
+  if (!routine) {
+    return <div className="p-6">Rotina não encontrada.</div>
+  }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25 }}
-      className="max-w-3xl mx-auto p-6 flex flex-col gap-6"
-    >
+    <div className="p-6 max-w-3xl mx-auto flex flex-col gap-6">
+      <h1 className="text-2xl font-bold">{routine.name}</h1>
 
-      {/* HEADER */}
-      <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          onClick={() => router.back()}
-          className="flex items-center gap-2"
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </Button>
+      {sessionExercises.map((ex, idx) => (
+        <div key={ex.exerciseId} className="rounded-lg border p-4 bg-card">
+          <h2 className="font-semibold">{ex.name}</h2>
+          <p className="text-xs text-muted-foreground mb-1">
+            Categoria: {ex.category}
+          </p>
 
-        <div className="flex flex-col">
-          <h1 className="text-2xl font-bold">{routine.name}</h1>
-          <p className="text-muted-foreground text-sm">Sessão ativa</p>
+          <Button
+            onClick={() => addSet(idx)}
+            className="mt-3"
+            variant="outline"
+          >
+            + Registrar set
+          </Button>
+
+          <div className="mt-3 flex flex-col gap-2">
+            {ex.sets.map((s, i) => (
+              <div
+                key={s.id}
+                className="border rounded-md p-2 flex justify-between text-sm"
+              >
+                <span>Set {i + 1}</span>
+                <span>{s.reps} reps</span>
+              </div>
+            ))}
+
+            {ex.sets.length === 0 && (
+              <span className="text-xs text-muted-foreground">
+                Nenhum set registrado ainda.
+              </span>
+            )}
+          </div>
         </div>
-      </div>
+      ))}
 
-      <Separator />
-
-      {/* EXERCÍCIOS */}
-      <div className="flex flex-col gap-6">
-        {sessionExercises.map((ex) => (
-          <motion.div key={ex.id} layout transition={{ type: "spring", bounce: 0.25 }}>
-            <SessionExerciseCard
-              exercise={{
-                id: ex.exerciseId,
-                name: ex.exerciseName,
-                category: ex.category,
-                userId: "",
-                createdAt: new Date(),
-              }}
-              type={ex.category}
-              sets={ex.sets}
-              onChange={(sets) => updateExerciseSets(ex.exerciseId, sets)}
-            />
-          </motion.div>
-        ))}
-      </div>
-
-      <Separator />
-
-      {/* SAVE BUTTON */}
       <Button
-        onClick={saveSession}
+        className="bg-green-600 hover:bg-green-700 mt-6"
+        onClick={finalizarTreino}
         disabled={saving}
-        className="flex items-center gap-2 justify-center text-lg py-6 bg-purple-600 hover:bg-purple-700"
       >
-        {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-        Finalizar Sessão
+        {saving ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+            Salvando treino...
+          </>
+        ) : (
+          "Finalizar treino"
+        )}
       </Button>
-
-    </motion.div>
+    </div>
   )
 }
