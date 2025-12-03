@@ -64,7 +64,6 @@ export function ExerciseSelector({
             key={ex.id}
             name={ex.name}
             category={ex.category}
-            photoUrl={ex.photoUrl}
             selected={selected.includes(ex.id)}
             onClick={() => onToggle(ex.id)}
           />

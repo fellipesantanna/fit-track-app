@@ -7,14 +7,15 @@ export function mapDbSession(db: any): Session {
     routineName: db.routine_name,
     startedAt: new Date(db.started_at),
     finishedAt: new Date(db.finished_at),
-    exercises: db.session_exercises.map((ex: any) => ({
+
+    exercises: (db.session_exercises ?? []).map((ex: any) => ({
       id: ex.id,
       exerciseId: ex.exercise_id,
-      exerciseName: ex.exercise_name,
-      category: ex.category,
-      photoUrl: ex.photo_url,
-      position: ex.position,
-      sets: ex.sets.map((s: any) => ({
+      exerciseName: ex.exercise_name ?? "Exercício",
+      category: ex.category ?? "weight-reps",
+      position: ex.position ?? 0,
+
+      sets: (ex.sets ?? []).map((s: any) => ({
         id: s.id,
         setIndex: s.set_index,
         reps: s.reps ?? undefined,

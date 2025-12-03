@@ -1,13 +1,17 @@
-// lib/dto/exercise.dto.ts
-
 export interface CreateExerciseDto {
   name: string
   category: string
-  photoUrl?: string | null
+  suggestedReps?: number | null
+  suggestedWeight?: number | null
+  suggestedTime?: number | null
+  suggestedDistance?: number | null
 }
 
 export interface UpdateExerciseDto {
   name?: string
   category?: string
-  photoUrl?: string | null
+  suggestedReps?: number | null
+  suggestedWeight?: number | null
+  suggestedTime?: number | null
+  suggestedDistance?: number | null
 }

@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase"
-import { SaveExerciseDto } from "@/lib/types"
+import { CreateExerciseDto, UpdateExerciseDto } from "@/lib/dto/exercise.dto"
 import { mapDbExercise } from "@/lib/mappers/exercise"
 
 export const exercisesApi = {
@@ -25,14 +25,18 @@ export const exercisesApi = {
     return mapDbExercise(data)
   },
 
-  async create(dto: SaveExerciseDto, userId: string) {
+  async create(dto: CreateExerciseDto, userId: string) {
     const { data, error } = await supabase
       .from("exercises")
       .insert({
         name: dto.name,
         category: dto.category,
-        photo_url: dto.photoUrl ?? null,
-        user_id: userId
+        user_id: userId,
+
+        suggested_reps: dto.suggestedReps,
+        suggested_weight: dto.suggestedWeight,
+        suggested_time: dto.suggestedTime,
+        suggested_distance: dto.suggestedDistance
       })
       .select()
       .single()
@@ -41,13 +45,17 @@ export const exercisesApi = {
     return mapDbExercise(data)
   },
 
-  async update(id: string, dto: SaveExerciseDto) {
+  async update(id: string, dto: UpdateExerciseDto) {
     const { data, error } = await supabase
       .from("exercises")
       .update({
         name: dto.name,
         category: dto.category,
-        photo_url: dto.photoUrl ?? null,
+
+        suggested_reps: dto.suggestedReps,
+        suggested_weight: dto.suggestedWeight,
+        suggested_time: dto.suggestedTime,
+        suggested_distance: dto.suggestedDistance
       })
       .eq("id", id)
       .select()

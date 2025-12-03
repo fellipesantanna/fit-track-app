@@ -1,6 +1,7 @@
 // lib/dto/routine.dto.ts
 
 export interface RoutineExerciseInput {
+  id: string
   exerciseId: string
   position: number
   suggestedSets?: number | null

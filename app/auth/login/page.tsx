@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { supabase } from "@/lib/supabase" // usa o mesmo client que você já está usando
+import { createBrowserSupabase } from "@/lib/supabase/browser"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Loader2, LogIn } from "lucide-react"
@@ -10,6 +10,7 @@ import { motion } from "framer-motion"
 
 export default function LoginPage() {
   const router = useRouter()
+  const supabase = createBrowserSupabase()
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -32,14 +33,13 @@ export default function LoginPage() {
 
     if (error) {
       console.error("Erro no login Supabase:", error)
-
-      // mostra a mensagem real do Supabase (email não confirmado, senha errada etc.)
-      alert(error.message || "Erro ao fazer login. Verifique os dados.")
+      alert(error.message || "Erro ao fazer login.")
       return
     }
 
     console.log("Login OK:", data)
-    router.replace("/dashboard")
+
+    router.push("/dashboard")
   }
 
   return (

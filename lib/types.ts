@@ -7,23 +7,24 @@ export type ExerciseCategory =
   | "duration"
   | "distance-duration"
 
-// =========================
-// Exercício (domínio)
-// =========================
 export interface Exercise {
   id: string
   name: string
   category: ExerciseCategory
-  photoUrl: string | null
   createdAt: Date
   userId: string
+
+  // SUGESTÕES
+  suggestedReps?: number | null
+  suggestedWeight?: number | null
+  suggestedTime?: number | null
+  suggestedDistance?: number | null
 }
 
 // DTO para criar/editar exercício
 export interface SaveExerciseDto {
   name: string
   category: ExerciseCategory
-  photoUrl?: string | null
 }
 
 // =========================
@@ -75,7 +76,6 @@ export interface SessionExercise {
   exerciseId: string
   exerciseName: string
   category: ExerciseCategory
-  photoUrl?: string | null
   position: number
   sets: WorkoutSet[]
 }

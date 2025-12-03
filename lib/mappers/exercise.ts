@@ -5,8 +5,12 @@ export function mapDbExercise(row: any): Exercise {
     id: row.id,
     name: row.name,
     category: row.category,
-    photoUrl: row.photo_url,
     createdAt: new Date(row.created_at),
-    userId: row.user_id
+    userId: row.user_id,
+
+    suggestedReps: row.suggested_reps,
+    suggestedWeight: row.suggested_weight,
+    suggestedTime: row.suggested_time,
+    suggestedDistance: row.suggested_distance
   }
 }

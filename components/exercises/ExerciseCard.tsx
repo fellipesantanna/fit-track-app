@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils"
 interface ExerciseCardProps {
   name: string
   category: string
-  photoUrl?: string | null
   selected?: boolean
   onClick?: () => void
 }
@@ -22,7 +21,6 @@ const categoryIcons: Record<string, any> = {
 export function ExerciseCard({
   name,
   category,
-  photoUrl,
   selected = false,
   onClick
 }: ExerciseCardProps) {
@@ -54,15 +52,6 @@ export function ExerciseCard({
           {category}
         </span>
       </div>
-
-      {/* Foto (opcional) */}
-      {photoUrl && (
-        <img
-          src={photoUrl}
-          alt={name}
-          className="ml-auto h-12 w-12 rounded-md object-cover"
-        />
-      )}
     </motion.div>
   )
 }

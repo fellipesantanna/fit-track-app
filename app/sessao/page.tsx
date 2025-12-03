@@ -7,10 +7,17 @@ import { Button } from "@/components/ui/button"
 import { Loader2, Save, ArrowLeft } from "lucide-react"
 import { sessionsApi } from "@/lib/api/session"
 import { routinesApi } from "@/lib/api/routines"
-import { Exercise, Routine, SessionExercise, WorkoutSet } from "@/lib/types"
+import { exercisesApi } from "@/lib/api/exercise"
+import {
+  Exercise,
+  Routine,
+  SessionExercise,
+  WorkoutSet,
+  ExerciseCategory,
+  Session
+} from "@/lib/types"
 import { Separator } from "@/components/ui/separator"
 import { motion } from "framer-motion"
-import { exercisesApi } from "@/lib/api/exercise"
 
 export default function SessaoPage() {
   const searchParams = useSearchParams()
@@ -23,12 +30,68 @@ export default function SessaoPage() {
   const [routine, setRoutine] = useState<Routine | null>(null)
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [sessionExercises, setSessionExercises] = useState<SessionExercise[]>([])
+  const [lastSession, setLastSession] = useState<Session | null>(null)
 
   const [sessionStartTimestamp] = useState(Date.now())
 
-  /** ============================
-   *  Carregar dados
-   ============================ */
+  /** ----------------------------------------------------------------------------
+   * PR3 — Função para montar sets iniciais
+  ---------------------------------------------------------------------------- */
+  function buildInitialSets(
+    category: ExerciseCategory,
+    suggestedSets?: number | null,
+    suggestedReps?: number | null
+  ): WorkoutSet[] {
+
+    const totalSets = suggestedSets ?? 0
+    const reps = suggestedReps ?? 10
+
+    const list: WorkoutSet[] = []
+
+    for (let i = 0; i < totalSets; i++) {
+      list.push({
+        id: crypto.randomUUID(),
+        setIndex: i,
+        reps: category.includes("reps") ? reps : null,
+        weightKg: category === "weight-reps" ? 20 : null,
+        durationSec: category.includes("duration") ? 30 : null,
+        distanceM: category === "distance-duration" ? 100 : null,
+      })
+    }
+
+    return list
+  }
+
+  /** ----------------------------------------------------------------------------
+   * PR3 — Misturar sugestões + último treino
+  ---------------------------------------------------------------------------- */
+  function mergeWithLastSession(
+    exerciseId: string,
+    baseSets: WorkoutSet[],
+    last: Session | null
+  ): WorkoutSet[] {
+
+    if (!last) return baseSets
+
+    const lastEx = last.exercises.find(e => e.exerciseId === exerciseId)
+    if (!lastEx) return baseSets
+
+    if (lastEx.sets.length === 0) return baseSets
+
+    // usa o último treino
+    return lastEx.sets.map((set, idx) => ({
+      id: crypto.randomUUID(),
+      setIndex: idx,
+      reps: set.reps ?? null,
+      weightKg: set.weightKg ?? null,
+      durationSec: set.durationSec ?? null,
+      distanceM: set.distanceM ?? null,
+    }))
+  }
+
+  /** ----------------------------------------------------------------------------
+   * Carregar dados
+  ---------------------------------------------------------------------------- */
   useEffect(() => {
     if (!routineId) {
       router.push("/rotinas")
@@ -46,23 +109,44 @@ export default function SessaoPage() {
         setRoutine(routineData)
         setExercises(allExercises)
 
-        // Montar state da sessão baseado na rotina
+        // carregar sessões anteriores (pegar a mais recente)
+        const sessions = await sessionsApi.getAll()
+        const previous = sessions
+          .filter(s => s.routine_id === routineId) as any
+
+        setLastSession(previous.length > 0 ? previous[0] : null)
+
+        // montar state da sessão
         const prepared: SessionExercise[] = routineData.exercises.map((re, idx) => {
           const ex = allExercises.find(e => e.id === re.exerciseId)
+
+          const baseSets = buildInitialSets(
+            ex?.category ?? "weight-reps",
+            re.suggestedSets,
+            re.suggestedReps
+          )
+
+          const finalSets = mergeWithLastSession(
+            re.exerciseId,
+            baseSets,
+            previous[0] ?? null
+          )
 
           return {
             id: crypto.randomUUID(),
             exerciseId: re.exerciseId,
             exerciseName: ex?.name ?? "Exercício",
             category: ex?.category ?? "weight-reps",
-            photoUrl: ex?.photoUrl ?? null,
             position: idx,
-            sets: []
+            sets: finalSets,
           }
         })
 
         setSessionExercises(prepared)
 
+      } catch (err) {
+        console.error(err)
+        alert("Erro ao carregar dados.")
       } finally {
         setLoading(false)
       }
@@ -71,23 +155,20 @@ export default function SessaoPage() {
     load()
   }, [routineId])
 
-
-  /** ============================
-   *  Atualizar sets de um exercício
-   ============================ */
-  function updateExerciseSets(exId: string, sets: WorkoutSet[]) {
+  /** ----------------------------------------------------------------------------
+   * Atualizar sets
+  ---------------------------------------------------------------------------- */
+  function updateExerciseSets(exerciseId: string, sets: WorkoutSet[]) {
     setSessionExercises(prev =>
-      prev.map(se => se.id === exId ? { ...se, sets } : se)
+      prev.map(se => se.exerciseId === exerciseId ? { ...se, sets } : se)
     )
   }
 
-
-  /** ============================
-   *  Salvar sessão no banco
-   ============================ */
+  /** ----------------------------------------------------------------------------
+   * Salvar sessão
+  ---------------------------------------------------------------------------- */
   async function saveSession() {
     setSaving(true)
-
     try {
       await sessionsApi.create({
         routineId: routineId!,
@@ -110,10 +191,9 @@ export default function SessaoPage() {
     }
   }
 
-
-  /** ============================
-   *  UI
-   ============================ */
+  /** ----------------------------------------------------------------------------
+   * UI
+  ---------------------------------------------------------------------------- */
 
   if (loading) {
     return (
@@ -145,34 +225,27 @@ export default function SessaoPage() {
 
         <div className="flex flex-col">
           <h1 className="text-2xl font-bold">{routine.name}</h1>
-          <p className="text-muted-foreground text-sm">
-            Cartões grandes • Editor premium
-          </p>
+          <p className="text-muted-foreground text-sm">Sessão ativa</p>
         </div>
       </div>
 
       <Separator />
 
-      {/* EXERCÍCIOS DA SESSÃO */}
+      {/* EXERCÍCIOS */}
       <div className="flex flex-col gap-6">
         {sessionExercises.map((ex) => (
-          <motion.div
-            key={ex.id}
-            layout
-            transition={{ type: "spring", bounce: 0.25 }}
-          >
+          <motion.div key={ex.id} layout transition={{ type: "spring", bounce: 0.25 }}>
             <SessionExerciseCard
               exercise={{
                 id: ex.exerciseId,
                 name: ex.exerciseName,
                 category: ex.category,
-                photoUrl: ex.photoUrl!,
                 userId: "",
                 createdAt: new Date(),
               }}
               type={ex.category}
               sets={ex.sets}
-              onChange={(sets) => updateExerciseSets(ex.id, sets)}
+              onChange={(sets) => updateExerciseSets(ex.exerciseId, sets)}
             />
           </motion.div>
         ))}
@@ -186,11 +259,7 @@ export default function SessaoPage() {
         disabled={saving}
         className="flex items-center gap-2 justify-center text-lg py-6 bg-purple-600 hover:bg-purple-700"
       >
-        {saving ? (
-          <Loader2 className="w-5 h-5 animate-spin" />
-        ) : (
-          <Save className="w-5 h-5" />
-        )}
+        {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
         Finalizar Sessão
       </Button>
 

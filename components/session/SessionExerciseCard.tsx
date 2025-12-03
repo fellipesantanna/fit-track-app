@@ -2,14 +2,20 @@
 
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ChevronDown, ChevronUp, Dumbbell, Timer, Gauge, Footprints, Plus } from "lucide-react"
+import {
+  ChevronDown,
+  ChevronUp,
+  Dumbbell,
+  Timer,
+  Gauge,
+  Footprints,
+  Plus
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { WorkoutSet, ExerciseCategory, Exercise } from "@/lib/types"
 import { SessionSetCard } from "./SessionSetCard"
 import { SetEditor } from "./SetEditor"
-import { StopwatchInput } from "./StopwatchInput"
-import { DistanceDurationInput } from "./DistanceDurationInput"
 
 interface SessionExerciseCardProps {
   exercise: Exercise
@@ -67,7 +73,7 @@ export function SessionExerciseCard({
     const target = sets.find(s => s.id === id)
     if (!target) return
 
-    const newOne = {
+    const newOne: WorkoutSet = {
       ...target,
       id: crypto.randomUUID(),
       setIndex: sets.length
@@ -147,6 +153,8 @@ export function SessionExerciseCard({
                           type={type}
                           value={s}
                           onChange={(val) => updateSet(s.id, val)}
+                          onDuplicate={() => duplicateSet(s.id)}
+                          onRemove={() => removeSet(s.id)}
                         />
 
                         <div className="flex justify-end mt-2">

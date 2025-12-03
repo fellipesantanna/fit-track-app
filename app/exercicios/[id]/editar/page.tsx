@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { motion } from "framer-motion"
 import { Loader2, Save, ArrowLeft } from "lucide-react"
-import Image from "next/image"
 import { cn } from "@/lib/utils"
 
 const CATEGORY_OPTIONS: { id: ExerciseCategory; label: string }[] = [
@@ -32,9 +31,6 @@ export default function EditExercisePage() {
   const [name, setName] = useState("")
   const [category, setCategory] = useState<ExerciseCategory>("weight-reps")
 
-  const [photo, setPhoto] = useState<string | null>(null)
-  const [uploading, setUploading] = useState(false)
-
   /** =============================
    * Carregar dados
    ============================== */
@@ -46,49 +42,12 @@ export default function EditExercisePage() {
         setExercise(ex)
         setName(ex.name)
         setCategory(ex.category)
-        setPhoto(ex.photoUrl ?? null)
       } finally {
         setLoading(false)
       }
     }
     load()
   }, [id])
-
-  /** =============================
-   * Upload de imagem
-   ============================== */
-  async function uploadPhoto(e: any) {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    setUploading(true)
-
-    try {
-      const ext = file.name.split(".").pop()
-      const path = `exercises/${id}.${ext}`
-
-      // upload
-      const { error } = await supabase.storage
-        .from("exercises")
-        .upload(path, file, {
-          upsert: true,
-        })
-
-      if (error) throw error
-
-      // pegar URL pública
-      const { data: pub } = supabase.storage
-        .from("exercises")
-        .getPublicUrl(path)
-
-      setPhoto(pub.publicUrl)
-    } catch (err) {
-      console.error(err)
-      alert("Erro ao enviar imagem.")
-    } finally {
-      setUploading(false)
-    }
-  }
 
   /** =============================
    * Salvar exercício
@@ -103,8 +62,7 @@ export default function EditExercisePage() {
     try {
       await exercisesApi.update(id, {
         name,
-        category,
-        photoUrl: photo
+        category
       })
 
       router.push("/exercicios")
@@ -150,47 +108,12 @@ export default function EditExercisePage() {
         <div>
           <h1 className="text-2xl font-bold">Editar exercício</h1>
           <p className="text-muted-foreground text-sm">
-            Ajuste informações e foto
+            Ajuste informações do exercício
           </p>
         </div>
       </div>
 
       <Separator />
-
-      {/* FOTO */}
-      <div className="flex flex-col gap-2">
-        <label className="text-sm font-medium">Foto do exercício</label>
-
-        <div className="rounded-xl border p-4 bg-muted/20 dark:bg-muted/10 flex flex-col gap-3 items-center">
-          {photo ? (
-            <Image
-              src={photo}
-              alt="exercício"
-              width={300}
-              height={200}
-              className="rounded-md object-cover shadow"
-            />
-          ) : (
-            <div className="h-40 w-full rounded-md bg-muted flex items-center justify-center text-muted-foreground">
-              Sem foto
-            </div>
-          )}
-
-          <Input
-            type="file"
-            accept="image/*"
-            onChange={uploadPhoto}
-            disabled={uploading}
-          />
-
-          {uploading && (
-            <div className="text-sm text-purple-500 flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Enviando imagem...
-            </div>
-          )}
-        </div>
-      </div>
 
       {/* NOME */}
       <div className="flex flex-col gap-2">

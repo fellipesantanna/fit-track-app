@@ -3,14 +3,25 @@
 import { useEffect, useState } from "react"
 import { exercisesApi } from "@/lib/api/exercise"
 import { Exercise } from "@/lib/types"
+import { createBrowserSupabase } from "@/lib/supabase/browser"
 
 export default function ExercisesPage() {
+  const supabase = createBrowserSupabase()
+
   const [list, setList] = useState<Exercise[]>([])
+
   const [name, setName] = useState("")
   const [category, setCategory] = useState("weight-reps")
 
+  // SUGESTÕES
+  const [reps, setReps] = useState<number | null>(null)
+  const [weight, setWeight] = useState<number | null>(null)
+  const [time, setTime] = useState<number | null>(null)
+  const [distance, setDistance] = useState<number | null>(null)
+
   async function load() {
-    const data = await exercisesApi.getAll()
+    const { data: { user } } = await supabase.auth.getUser()
+    const data = await exercisesApi.getAll(user!.id)
     setList(data)
   }
 
@@ -19,13 +30,24 @@ export default function ExercisesPage() {
   }, [])
 
   async function create() {
+    const { data: { user } } = await supabase.auth.getUser()
+
     await exercisesApi.create({
       name,
       category,
-      photoUrl: null
-    })
+      suggestedReps: reps,
+      suggestedWeight: weight,
+      suggestedTime: time,
+      suggestedDistance: distance
+    }, user!.id)
+
     setName("")
-    load()
+    setReps(null)
+    setWeight(null)
+    setTime(null)
+    setDistance(null)
+
+    await load()
   }
 
   return (
@@ -46,6 +68,29 @@ export default function ExercisesPage() {
           <option value="distance-duration">Distância + Tempo</option>
         </select>
 
+        {/* Campos dinâmicos */}
+        {category === "weight-reps" && (
+          <>
+            <input type="number" placeholder="Reps sugeridas" onChange={(e) => setReps(Number(e.target.value))} />
+            <input type="number" placeholder="Peso sugerido (kg)" onChange={(e) => setWeight(Number(e.target.value))} />
+          </>
+        )}
+
+        {category === "bodyweight-reps" && (
+          <input type="number" placeholder="Reps sugeridas" onChange={(e) => setReps(Number(e.target.value))} />
+        )}
+
+        {category === "duration" && (
+          <input type="number" placeholder="Tempo sugerido (seg) " onChange={(e) => setTime(Number(e.target.value))} />
+        )}
+
+        {category === "distance-duration" && (
+          <>
+            <input type="number" placeholder="Distância sugerida (km)" onChange={(e) => setDistance(Number(e.target.value))} />
+            <input type="number" placeholder="Tempo sugerido (min)" onChange={(e) => setTime(Number(e.target.value))} />
+          </>
+        )}
+
         <button onClick={create}>Adicionar</button>
       </div>
 
@@ -53,9 +98,7 @@ export default function ExercisesPage() {
         {list.map((e) => (
           <li key={e.id}>
             {e.name} — {e.category}
-            <button onClick={() => exercisesApi.delete(e.id).then(load)}>
-              apagar
-            </button>
+            <button onClick={() => exercisesApi.delete(e.id).then(load)}>apagar</button>
           </li>
         ))}
       </ul>

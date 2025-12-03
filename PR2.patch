@@ -1,0 +1,102 @@
+diff --git a/lib/types.ts b/lib/types.ts
+index 8f2a220..da21efb 100644
+--- a/lib/types.ts
++++ b/lib/types.ts
+@@ -33,6 +33,7 @@ export interface RoutineExercise {
+   exerciseId: string
+   position: number
+   suggestedSets: number | null
++  suggestedReps: number | null
++  advancedTechnique: string | null
+ }
+ 
+ export interface Routine {
+diff --git a/lib/dto/routine.dto.ts b/lib/dto/routine.dto.ts
+index 12c98e2..278c8f8 100644
+--- a/lib/dto/routine.dto.ts
++++ b/lib/dto/routine.dto.ts
+@@ -6,6 +6,7 @@ export interface CreateRoutineExerciseDto {
+   exerciseId: string
+   position: number
+   suggestedSets: number | null
++  suggestedReps?: number | null
++  advancedTechnique?: string | null
+ }
+ 
+ export interface CreateRoutineDto {
+diff --git a/lib/mappers/routine.ts b/lib/mappers/routine.ts
+index f5dfb84..1e72a78 100644
+--- a/lib/mappers/routine.ts
++++ b/lib/mappers/routine.ts
+@@ -16,6 +16,8 @@ export function mapDbRoutine(row: any): Routine {
+         exerciseId: r.exercise_id,
+         position: r.position,
+         suggestedSets: r.suggested_sets,
++        suggestedReps: r.suggested_reps,
++        advancedTechnique: r.advanced_technique,
+       })),
+   }
+ }
+diff --git a/lib/api/routines.ts b/lib/api/routines.ts
+index a45ab33..b86c829 100644
+--- a/lib/api/routines.ts
++++ b/lib/api/routines.ts
+@@ -38,6 +38,9 @@ export const routinesApi = {
+         routine_id: routine.id,
+         exercise_id: ex.exerciseId,
+         position: ex.position,
++        suggested_reps: ex.suggestedReps ?? null,
++        advanced_technique: ex.advancedTechnique ?? null,
++        suggested_sets: ex.suggestedSets ?? null
+       })
+     }
+ 
+diff --git a/components/routines/RoutineExerciseEditor.tsx b/components/routines/RoutineExerciseEditor.tsx
+index 1bd8211..ad193a3 100644
+--- a/components/routines/RoutineExerciseEditor.tsx
++++ b/components/routines/RoutineExerciseEditor.tsx
+@@ -10,6 +10,7 @@ interface Props {
+   onUpdate: (data: {
+     suggestedSets?: number | null
+     suggestedReps?: number | null
++    advancedTechnique?: string | null
+   }) => void
+ }
+ 
+@@ -50,6 +51,25 @@ export function RoutineExerciseEditor({ exercise, onUpdate }: Props) {
+         />
+       </div>
+     )}
++
++    {/* ADVANCED TECHNIQUE */}
++    <div className="flex flex-col gap-2 mt-3">
++      <label className="text-sm font-medium">
++        Técnica avançada (opcional)
++      </label>
++      <textarea
++        value={exercise.advancedTechnique ?? ""}
++        onChange={(e) =>
++          onUpdate({
++            advancedTechnique: e.target.value || null,
++          })
++        }
++        className="border rounded-xl p-3 bg-card dark:bg-card/70"
++        placeholder="Dropset, rest-pause, bi-set..."
++      />
++    </div>
++
++
+   </div>
+ }
+diff --git a/app/rotinas/nova/page.tsx b/app/rotinas/nova/page.tsx
+index cb34d15..c0bb0f0 100644
+--- a/app/rotinas/nova/page.tsx
++++ b/app/rotinas/nova/page.tsx
+@@ -142,6 +142,17 @@ function NewRoutinePage() {
+       suggestedReps: ex.suggestedReps ?? null,
+       position: index,
+       suggestedSets: ex.suggestedSets ?? null,
++      advancedTechnique: ex.advancedTechnique ?? null,
+     })),
+   }
+ 

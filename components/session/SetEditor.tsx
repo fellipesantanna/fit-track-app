@@ -23,25 +23,25 @@ export function SetEditor({
   onRemove
 }: SetEditorProps) {
 
-  // ======= WHEEL STATE =======
-
   const [weight, setWeight] = useState<number>(value.weightKg ?? 0)
   const [reps, setReps] = useState<number>(value.reps ?? 0)
   const [duration, setDuration] = useState<number>(value.durationSec ?? 0)
   const [distance, setDistance] = useState<number>(value.distanceM ?? 0)
 
-  // Atualiza o valor final
   useEffect(() => {
-    onChange({
+    const updated: WorkoutSet = {
       ...value,
       weightKg: type === "weight-reps" ? weight : null,
-      reps: type === "weight-reps" || type === "bodyweight-reps" ? reps : null,
-      durationSec: type === "duration" || type === "distance-duration" ? duration : null,
+      reps: (type === "weight-reps" || type === "bodyweight-reps") ? reps : null,
+      durationSec: (type === "duration" || type === "distance-duration") ? duration : null,
       distanceM: type === "distance-duration" ? distance : null,
-    })
+    }
+
+    onChange(updated)
+
   }, [weight, reps, duration, distance])
 
-  // ======= CONTROLES DE WHEEL =======
+
   function Wheel({
     label,
     value,
@@ -50,7 +50,6 @@ export function SetEditor({
     min = 0,
     max = 999,
     unit,
-    icon: Icon
   }: {
     label: string
     value: number
@@ -59,13 +58,11 @@ export function SetEditor({
     min?: number
     max?: number
     unit?: string
-    icon?: any
   }) {
     return (
       <div className="flex flex-col items-center">
         <span className="text-sm text-muted-foreground">{label}</span>
 
-        {/* Wheel */}
         <motion.div
           className={cn(
             "mt-2 h-24 w-20 rounded-xl",
@@ -85,7 +82,7 @@ export function SetEditor({
 
           <motion.div layout className="font-bold text-xl">
             {value}
-            {unit && <span className="ml-1 text-sm text-muted-foreground">{unit}</span>}
+            {unit && <span className="text-sm ml-1">{unit}</span>}
           </motion.div>
 
           <motion.button
@@ -100,16 +97,16 @@ export function SetEditor({
     )
   }
 
-  // ======= ICONES =======
+
   const iconMap: Record<ExerciseCategory, any> = {
     "weight-reps": Dumbbell,
     "bodyweight-reps": Dumbbell,
     "duration": Timer,
     "distance-duration": Gauge
   }
+
   const Icon = iconMap[type]
 
-  // ======= UI =======
 
   return (
     <motion.div
@@ -123,7 +120,9 @@ export function SetEditor({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Icon className="w-5 h-5 text-purple-500 dark:text-purple-300" />
-          <span className="font-semibold text-lg">Set {value.setIndex + 1}</span>
+          <span className="font-semibold text-lg">
+            Set {value.setIndex + 1}
+          </span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -141,10 +140,10 @@ export function SetEditor({
         </div>
       </div>
 
+
       {/* BODY */}
       <div className="flex items-center justify-center gap-6">
-        
-        {/* PESO + REPS */}
+
         {(type === "weight-reps" || type === "bodyweight-reps") && (
           <>
             {type === "weight-reps" && (
@@ -166,7 +165,6 @@ export function SetEditor({
           </>
         )}
 
-        {/* DURAÇÃO */}
         {type === "duration" && (
           <Wheel
             label="Duração"
@@ -177,7 +175,6 @@ export function SetEditor({
           />
         )}
 
-        {/* DISTÂNCIA + TEMPO */}
         {type === "distance-duration" && (
           <>
             <Wheel
@@ -197,8 +194,8 @@ export function SetEditor({
             />
           </>
         )}
-
       </div>
+
 
       {/* PRESETS */}
       <div className="grid grid-cols-3 gap-2 mt-2">
